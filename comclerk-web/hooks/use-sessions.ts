@@ -68,3 +68,22 @@ export function useUpdateSession() {
     },
   })
 }
+
+export function useDeleteAllSessions() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (sessionIds: string[]) => {
+      // 모든 세션을 순차적으로 삭제
+      for (const id of sessionIds) {
+        const result = await opencode.session.delete({ path: { id } })
+        if (result.error) {
+          console.warn(`Failed to delete session ${id}:`, result.error)
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+    },
+  })
+}

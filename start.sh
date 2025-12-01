@@ -110,6 +110,14 @@ main() {
         exit 1
     fi
 
+    # PDF 심볼릭 링크 확인/생성 (웹에서 PDF 접근용)
+    PDF_SYMLINK="$WEB_DIR/public/pdfs"
+    if [ ! -L "$PDF_SYMLINK" ]; then
+        echo -e "${YELLOW}[ComClerk] PDF 심볼릭 링크 생성 중...${NC}"
+        ln -sf "$PDF_DIR" "$PDF_SYMLINK"
+        echo -e "${GREEN}[ComClerk] 심볼릭 링크 생성됨: $PDF_SYMLINK -> $PDF_DIR${NC}"
+    fi
+
     echo -e "${YELLOW}[ComClerk] 프로젝트 디렉토리: $PDF_DIR${NC}"
     echo ""
 

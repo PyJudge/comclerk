@@ -20,7 +20,7 @@ interface Agent {
 export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
   const [message, setMessage] = useState('')
   const [showModelSelector, setShowModelSelector] = useState(false)
-  const [selectedAgent, setSelectedAgent] = useState('build')
+  const [selectedAgent, setSelectedAgent] = useState<string>('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const sendMessage = useSendMessageAsync()
   const { selectedModel, setSelectedModel, providers, connectedProviders, isLoading: modelLoading } = useModel()
@@ -33,6 +33,13 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
       (a) => a.mode === 'primary' || a.mode === 'all'
     )
   }, [agents])
+
+  // Set default agent when availableAgents loads
+  useEffect(() => {
+    if (availableAgents.length > 0 && !selectedAgent) {
+      setSelectedAgent(availableAgents[0].name)
+    }
+  }, [availableAgents, selectedAgent])
 
   // Get connected providers with their models (exclude opencode/zen for now)
   const connectedProviderData = providers.filter(p =>
@@ -51,7 +58,7 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
     e.preventDefault()
 
     const trimmed = message.trim()
-    if (!trimmed || sendMessage.isPending || !selectedModel) return
+    if (!trimmed || sendMessage.isPending || !selectedModel || !selectedAgent) return
 
     try {
       setMessage('')
@@ -107,7 +114,7 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full">
+    <form onSubmit={handleSubmit} className="w-full" data-testid="message-form">
       {/* Model & Agent Selectors */}
       <div className="mb-2 flex items-center gap-2 flex-wrap">
         {/* Model Selector */}
@@ -115,6 +122,7 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
           <button
             type="button"
             onClick={() => setShowModelSelector(!showModelSelector)}
+            data-testid="model-selector"
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm',
               'bg-zinc-800 hover:bg-zinc-700 transition-colors',
@@ -122,7 +130,7 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
             )}
           >
             <span className="text-zinc-400">모델:</span>
-            <span className="font-medium">{modelLoading ? '로딩 중...' : getModelDisplayName()}</span>
+            <span className="font-medium" data-testid="model-display">{modelLoading ? '로딩 중...' : getModelDisplayName()}</span>
             <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
@@ -168,13 +176,15 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
 
         {/* Agent Selector (Tab to switch) */}
         {availableAgents.length > 0 && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" data-testid="agent-selector">
             {availableAgents.map((agent) => (
               <button
                 key={agent.name}
                 type="button"
                 onClick={() => setSelectedAgent(agent.name)}
                 title={agent.description}
+                data-testid={`agent-btn-${agent.name}`}
+                data-selected={selectedAgent === agent.name}
                 className={cn(
                   'px-3 py-1.5 rounded-md text-sm transition-colors',
                   selectedAgent === agent.name
@@ -197,9 +207,10 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={!selectedModel ? '먼저 모델을 선택하세요...' : `메시지 입력 (${selectedAgent} 모드)...`}
-            disabled={sendMessage.isPending || !selectedModel}
+            placeholder={!selectedModel ? '먼저 모델을 선택하세요...' : !selectedAgent ? '에이전트 로딩 중...' : `메시지 입력 (${selectedAgent} 모드)...`}
+            disabled={sendMessage.isPending || !selectedModel || !selectedAgent}
             rows={1}
+            data-testid="message-input"
             className={cn(
               'w-full resize-none rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-zinc-200',
               'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
@@ -211,7 +222,8 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
         </div>
         <button
           type="submit"
-          disabled={!message.trim() || sendMessage.isPending || !selectedModel}
+          disabled={!message.trim() || sendMessage.isPending || !selectedModel || !selectedAgent}
+          data-testid="send-button"
           className={cn(
             'p-3 rounded-lg bg-blue-600 text-white',
             'hover:bg-blue-500 transition-colors',

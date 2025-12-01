@@ -3,7 +3,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw } from 'lucide-react'
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PDFViewerProps } from '@/types/pdf'
 
@@ -42,7 +42,8 @@ export function PDFViewer({
         if (mounted) {
           setPdfjsLib(pdfjs)
         }
-      } catch {
+      } catch (err) {
+        console.error('PDF.js load error:', err)
         if (mounted) {
           setError('PDF 뷰어를 불러올 수 없습니다. 페이지를 새로고침해주세요.')
         }
@@ -163,6 +164,52 @@ export function PDFViewer({
     }
   }, [pdf, currentPage, scale, rotation, renderPage])
 
+  // 키보드 네비게이션
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!pdf) return
+
+      // 입력 필드에서는 무시
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+      switch (e.key) {
+        case 'PageUp':
+        case 'ArrowUp':
+        case 'ArrowLeft':
+          e.preventDefault()
+          if (currentPage > 1) {
+            const newPage = currentPage - 1
+            setCurrentPage(newPage)
+            setPageInput(newPage.toString())
+          }
+          break
+        case 'PageDown':
+        case 'ArrowDown':
+        case 'ArrowRight':
+          e.preventDefault()
+          if (currentPage < totalPages) {
+            const newPage = currentPage + 1
+            setCurrentPage(newPage)
+            setPageInput(newPage.toString())
+          }
+          break
+        case 'Home':
+          e.preventDefault()
+          setCurrentPage(1)
+          setPageInput('1')
+          break
+        case 'End':
+          e.preventDefault()
+          setCurrentPage(totalPages)
+          setPageInput(totalPages.toString())
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [pdf, currentPage, totalPages])
+
   // 페이지 네비게이션
   const goToPrevPage = () => {
     if (currentPage > 1) {
@@ -197,24 +244,6 @@ export function PDFViewer({
     if (e.key === 'Enter') {
       handlePageInputSubmit()
     }
-  }
-
-  // 확대/축소
-  const zoomIn = () => {
-    if (scale < 2.0) {
-      setScale(Math.min(2.0, scale + 0.25))
-    }
-  }
-
-  const zoomOut = () => {
-    if (scale > 0.5) {
-      setScale(Math.max(0.5, scale - 0.25))
-    }
-  }
-
-  // 회전
-  const rotate = () => {
-    setRotation((rotation + 90) % 360)
   }
 
   // 빈 상태
@@ -287,7 +316,7 @@ export function PDFViewer({
               onChange={(e) => handlePageInputChange(e.target.value)}
               onBlur={handlePageInputSubmit}
               onKeyPress={handlePageInputKeyPress}
-              className="w-16 text-center border border-zinc-700 rounded-md px-2 py-1 bg-zinc-800 text-zinc-200"
+              className="w-16 text-center border border-zinc-700 rounded-md px-2 py-1 bg-zinc-800 text-zinc-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               type="number"
               min="1"
               max={totalPages}
@@ -308,36 +337,10 @@ export function PDFViewer({
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* 확대/축소 */}
-          <button
-            className="p-2 border border-zinc-700 rounded-md text-zinc-300 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            onClick={zoomOut}
-            disabled={scale <= 0.5}
-          >
-            <ZoomOut className="h-4 w-4" />
-          </button>
-
-          <span className="text-sm text-zinc-400 w-16 text-center">
-            {Math.round(scale * 100)}%
-          </span>
-
-          <button
-            className="p-2 border border-zinc-700 rounded-md text-zinc-300 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            onClick={zoomIn}
-            disabled={scale >= 2.0}
-          >
-            <ZoomIn className="h-4 w-4" />
-          </button>
-
-          {/* 회전 */}
-          <button
-            className="p-2 border border-zinc-700 rounded-md text-zinc-300 hover:bg-zinc-800 transition-colors"
-            onClick={rotate}
-          >
-            <RotateCw className="h-4 w-4" />
-          </button>
-        </div>
+        {/* 고정 확대 비율 표시 */}
+        <span className="text-sm text-zinc-400">
+          {Math.round(scale * 100)}%
+        </span>
       </div>
 
       {/* PDF 뷰어 */}

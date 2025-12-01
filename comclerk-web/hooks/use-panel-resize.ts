@@ -17,11 +17,11 @@ interface UsePanelResizeOptions {
 }
 
 const DEFAULT_CONSTRAINTS: PanelConstraints = {
-  minLeftWidth: 200,
-  maxLeftWidth: 500,
-  minRightWidth: 300,
-  maxRightWidth: 600,
-  minCenterWidth: 400,
+  minLeftWidth: 120,
+  maxLeftWidth: 400,
+  minRightWidth: 200,
+  maxRightWidth: 500,
+  minCenterWidth: 200,
 }
 
 export function usePanelResize(
@@ -29,8 +29,8 @@ export function usePanelResize(
   options: UsePanelResizeOptions = {}
 ) {
   const {
-    initialLeftWidth = 320,
-    initialRightWidth = 384,
+    initialLeftWidth = 240,
+    initialRightWidth = 320,
     constraints: customConstraints,
   } = options
 
@@ -128,40 +128,44 @@ export function usePanelResize(
     }
   }, [isDragging, handleMouseMove, handleMouseUp])
 
+  // Adjust panels to fit container
+  const adjustPanelsToFit = useCallback(() => {
+    if (!containerRef.current) return
+
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const totalWidth = containerRect.width
+    const resizeHandleWidth = 8 // 2 handles * 4px each
+    const availableForPanels = totalWidth - resizeHandleWidth
+
+    // 현재 패널 너비 합계
+    const currentTotal = leftPanelWidth + rightPanelWidth + constraints.minCenterWidth
+
+    if (currentTotal > availableForPanels) {
+      // 비율 유지하면서 축소
+      const targetSidePanels = availableForPanels - constraints.minCenterWidth
+      const currentSidePanels = leftPanelWidth + rightPanelWidth
+      const ratio = Math.max(0, targetSidePanels / currentSidePanels)
+
+      const newLeft = Math.max(constraints.minLeftWidth, Math.floor(leftPanelWidth * ratio))
+      const newRight = Math.max(constraints.minRightWidth, Math.floor(rightPanelWidth * ratio))
+
+      setLeftPanelWidth(newLeft)
+      setRightPanelWidth(newRight)
+    }
+  }, [leftPanelWidth, rightPanelWidth, constraints, containerRef])
+
+  // Initial adjustment on mount
+  useEffect(() => {
+    // 약간의 딜레이 후 조정 (DOM이 완전히 렌더링된 후)
+    const timer = setTimeout(adjustPanelsToFit, 100)
+    return () => clearTimeout(timer)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Window resize handler
   useEffect(() => {
-    const handleResize = () => {
-      if (!containerRef.current) return
-
-      const containerRect = containerRef.current.getBoundingClientRect()
-      const totalWidth = containerRect.width
-      const minTotalWidth =
-        constraints.minLeftWidth + constraints.minCenterWidth + constraints.minRightWidth
-
-      if (totalWidth < minTotalWidth) {
-        setLeftPanelWidth(constraints.minLeftWidth)
-        setRightPanelWidth(constraints.minRightWidth)
-      } else {
-        const availableWidth = totalWidth - constraints.minCenterWidth
-        const currentTotal = leftPanelWidth + rightPanelWidth
-
-        if (currentTotal > availableWidth) {
-          const leftRatio = leftPanelWidth / currentTotal
-          const rightRatio = rightPanelWidth / currentTotal
-
-          setLeftPanelWidth(
-            Math.max(constraints.minLeftWidth, Math.floor(availableWidth * leftRatio))
-          )
-          setRightPanelWidth(
-            Math.max(constraints.minRightWidth, Math.floor(availableWidth * rightRatio))
-          )
-        }
-      }
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [leftPanelWidth, rightPanelWidth, constraints, containerRef])
+    window.addEventListener('resize', adjustPanelsToFit)
+    return () => window.removeEventListener('resize', adjustPanelsToFit)
+  }, [adjustPanelsToFit])
 
   return {
     leftPanelWidth,

@@ -107,6 +107,21 @@ bun test:e2e         # Playwright E2E tests
 # 법률 문서를 이 폴더에 저장하여 작업
 ```
 
+### PDF 심볼릭 링크 설정
+
+웹앱에서 PDF 파일에 접근하려면 `comclerk-web/public/pdfs` 심볼릭 링크가 필요합니다.
+
+```bash
+# 프로젝트 루트에서 실행 (상대 경로 사용)
+cd comclerk-web/public
+ln -s ../../pdfs pdfs
+
+# 확인
+ls -la pdfs  # ../../pdfs 를 가리켜야 함
+```
+
+> **참고**: 심볼릭 링크는 `.gitignore`에 포함되어 있어 각 개발 환경에서 수동 생성 필요
+
 ## Architecture
 
 ### comclerk-backend/packages/

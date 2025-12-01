@@ -1,6 +1,11 @@
 # PDF 작업 폴더 - PDF 파일은 git에서 제외
 pdfs/*.pdf
 pdfs/**/*.pdf
+pdfs/.opencode/
+pdfs/opencode.json
+
+# PDF 심볼릭 링크 (각 개발 환경에서 수동 생성)
+comclerk-web/public/pdfs
 
 # Node.js
 node_modules/
@@ -32,6 +37,7 @@ yarn-error.log*
 # Cache
 .cache/
 .turbo/
+.playwright-mcp/
 
 # 임시 파일
 *.tmp

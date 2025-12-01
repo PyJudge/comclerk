@@ -9,6 +9,8 @@ const nextConfig = {
       '.mjs': ['.mts', '.mjs'],
       '.cjs': ['.cts', '.cjs'],
     }
+    // pdfjs-dist canvas 모듈 무시 (브라우저에서는 불필요)
+    config.resolve.alias.canvas = false
     return config
   },
 }

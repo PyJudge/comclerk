@@ -1,10 +1,18 @@
 // [COMCLERK-ADDED] 2024-12-01: PDF 관련 타입 정의
 
+// 서버에서 전달되는 파일 메타데이터
+export interface PDFFileMeta {
+  name: string
+  size: number
+  path: string // public URL 경로
+}
+
+// 클라이언트에서 사용하는 파일 데이터
 export interface PDFFileData {
   name: string
   size: number
   data?: ArrayBuffer
-  file: File
+  file?: File // 폴더 선택 시에만 있음
   path: string
 }
 

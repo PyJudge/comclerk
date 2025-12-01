@@ -32,6 +32,12 @@ export function WorkspaceLayout({ children, className }: WorkspaceLayoutProps) {
       return fileData
     }
 
+    // file 객체가 없으면 에러
+    if (!fileData.file) {
+      toast.error(`파일 로딩 실패: ${fileData.name}`)
+      throw new Error(`파일 로딩 실패: ${fileData.name}`)
+    }
+
     try {
       const arrayBuffer = await fileData.file.arrayBuffer()
       const loadedFile = {
