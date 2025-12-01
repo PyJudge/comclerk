@@ -71,7 +71,7 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
   }
 
   const getModelDisplayName = () => {
-    if (!selectedModel) return 'Select Model'
+    if (!selectedModel) return '모델 선택'
     const provider = providers.find(p => p.id === selectedModel.providerID)
     const model = provider?.models?.[selectedModel.modelID]
     return model?.name || selectedModel.modelID
@@ -107,7 +107,7 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full px-4">
+    <form onSubmit={handleSubmit} className="w-full">
       {/* Model & Agent Selectors */}
       <div className="mb-2 flex items-center gap-2 flex-wrap">
         {/* Model Selector */}
@@ -117,28 +117,28 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
             onClick={() => setShowModelSelector(!showModelSelector)}
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm',
-              'bg-muted hover:bg-muted/80 transition-colors',
-              'border border-border'
+              'bg-zinc-800 hover:bg-zinc-700 transition-colors',
+              'border border-zinc-700 text-zinc-200'
             )}
           >
-            <span className="text-muted-foreground">Model:</span>
-            <span className="font-medium">{modelLoading ? 'Loading...' : getModelDisplayName()}</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span className="text-zinc-400">모델:</span>
+            <span className="font-medium">{modelLoading ? '로딩 중...' : getModelDisplayName()}</span>
+            <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
 
           {/* Model Dropdown */}
           {showModelSelector && (
-            <div className="absolute bottom-full left-0 mb-1 w-80 max-h-64 overflow-y-auto bg-background border rounded-lg shadow-lg z-50">
+            <div className="absolute bottom-full left-0 mb-1 w-80 max-h-64 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg z-50">
               {connectedProviderData.length === 0 ? (
-                <div className="p-3 text-sm text-muted-foreground">
-                  No connected providers. Go to Settings to connect.
+                <div className="p-3 text-sm text-zinc-400">
+                  연결된 제공자가 없습니다. 설정에서 연결하세요.
                 </div>
               ) : (
                 connectedProviderData.map((provider) => (
-                  <div key={provider.id} className="border-b last:border-b-0">
-                    <div className="px-3 py-2 bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
+                  <div key={provider.id} className="border-b border-zinc-700 last:border-b-0">
+                    <div className="px-3 py-2 bg-zinc-900 text-xs font-semibold uppercase text-zinc-500">
                       {provider.name || provider.id}
                     </div>
                     <div className="py-1">
@@ -151,8 +151,8 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
                             setShowModelSelector(false)
                           }}
                           className={cn(
-                            'w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors',
-                            selectedModel?.providerID === provider.id && selectedModel?.modelID === modelId && 'bg-primary/10'
+                            'w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 transition-colors',
+                            selectedModel?.providerID === provider.id && selectedModel?.modelID === modelId && 'bg-blue-600/20 text-blue-300'
                           )}
                         >
                           {model.name || modelId}
@@ -178,14 +178,14 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
                 className={cn(
                   'px-3 py-1.5 rounded-md text-sm transition-colors',
                   selectedAgent === agent.name
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700'
                 )}
               >
                 {agent.name}
               </button>
             ))}
-            <span className="text-xs text-muted-foreground ml-1">(Tab)</span>
+            <span className="text-xs text-zinc-500 ml-1">(Tab)</span>
           </div>
         )}
       </div>
@@ -197,13 +197,13 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={!selectedModel ? 'Select a model first...' : `Message (${selectedAgent} mode)...`}
+            placeholder={!selectedModel ? '먼저 모델을 선택하세요...' : `메시지 입력 (${selectedAgent} 모드)...`}
             disabled={sendMessage.isPending || !selectedModel}
             rows={1}
             className={cn(
-              'w-full resize-none rounded-lg border bg-background px-4 py-3',
-              'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
-              'placeholder:text-muted-foreground',
+              'w-full resize-none rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-zinc-200',
+              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+              'placeholder:text-zinc-500',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               'max-h-32 overflow-y-auto'
             )}
@@ -213,8 +213,8 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
           type="submit"
           disabled={!message.trim() || sendMessage.isPending || !selectedModel}
           className={cn(
-            'p-3 rounded-lg bg-primary text-primary-foreground',
-            'hover:bg-primary/90 transition-colors',
+            'p-3 rounded-lg bg-blue-600 text-white',
+            'hover:bg-blue-500 transition-colors',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             'flex-shrink-0'
           )}
@@ -231,8 +231,8 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
           )}
         </button>
       </div>
-      <p className="text-xs text-muted-foreground mt-2 text-center">
-        Enter to send · Shift+Enter for new line · Tab to switch agent
+      <p className="text-xs text-zinc-500 mt-2 text-center">
+        Enter로 전송 · Shift+Enter로 줄바꿈 · Tab으로 에이전트 전환
       </p>
     </form>
   )

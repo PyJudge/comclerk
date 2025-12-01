@@ -16,14 +16,16 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
   useSessionEvents(sessionId)
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="flex-1 overflow-y-auto">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* 메시지 목록 - 스크롤 영역 */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         <MessageList
           messages={messages ?? []}
           isLoading={isLoading}
         />
       </div>
-      <div className="border-t bg-background p-4">
+      {/* 입력창 - 하단 고정 */}
+      <div className="flex-shrink-0 border-t border-zinc-800 bg-zinc-900 p-4">
         <MessageInput
           sessionId={sessionId}
           onMessageSent={startPolling}

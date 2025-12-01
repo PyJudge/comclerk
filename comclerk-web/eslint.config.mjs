@@ -9,6 +9,7 @@ export default [
       ".next/**",
       "node_modules/**",
       "sdk/src/gen/**",
+      "public/**",
       "*.config.js",
       "*.config.mjs",
     ],

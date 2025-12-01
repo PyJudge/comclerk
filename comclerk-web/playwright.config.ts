@@ -19,7 +19,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'bun dev --port 3001',
+    command: 'NEXT_PUBLIC_OPENCODE_API_URL=http://localhost:4096 bun dev --port 3001',
     url: 'http://localhost:3001',
     reuseExistingServer: !process.env.CI,
   },

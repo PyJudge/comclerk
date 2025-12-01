@@ -27,10 +27,10 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
   if (messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-4">
-        <div className="text-4xl mb-4">●</div>
-        <h3 className="text-lg font-medium mb-1">Start a conversation</h3>
-        <p className="text-muted-foreground text-sm">
-          Type a message below to start chatting.
+        <div className="text-4xl mb-4 text-zinc-600">●</div>
+        <h3 className="text-lg font-medium mb-1 text-zinc-300">대화를 시작하세요</h3>
+        <p className="text-zinc-500 text-sm">
+          아래에 메시지를 입력하여 채팅을 시작하세요.
         </p>
       </div>
     )

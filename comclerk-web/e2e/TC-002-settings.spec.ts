@@ -30,7 +30,12 @@ test.describe('TC-002: 설정 페이지', () => {
     // 1. API Key 관련 요소 찾기
     const apiKeySection = page.getByText(/API Key|API|Key/i);
 
-    // 2. 스크린샷 저장
+    // 2. API Key 섹션이 있으면 확인
+    if (await apiKeySection.count() > 0) {
+      await expect(apiKeySection.first()).toBeVisible();
+    }
+
+    // 3. 스크린샷 저장
     await page.screenshot({ path: 'e2e/screenshots/TC-002-apikey-section.png', fullPage: true });
   });
 

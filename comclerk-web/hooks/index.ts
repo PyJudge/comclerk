@@ -1,5 +1,8 @@
 // Session hooks
 export { useSessions, useCreateSession, useDeleteSession, useUpdateSession } from './use-sessions'
+
+// Panel resize hook
+export { usePanelResize } from './use-panel-resize'
 export {
   useSession,
   useSessionMessages,
