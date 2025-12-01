@@ -29,9 +29,10 @@ export namespace FileWatcher {
     return createWrapper(binding) as typeof import("@parcel/watcher")
   })
 
+  // [COMCLERK-MODIFIED] 2024-12-01: Git 저장소가 아니어도 파일 감시 활성화
+  // Original: Git 저장소가 아니면 early return
   const state = Instance.state(
     async () => {
-      if (Instance.project.vcs !== "git") return {}
       log.info("init")
       const cfg = await Config.get()
       const backend = (() => {

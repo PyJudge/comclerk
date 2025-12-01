@@ -1,3 +1,5 @@
+// [COMCLERK-MODIFIED] 2024-12-01: Added ConfigWatcher import for hot-reload
+// Original: opencode/packages/opencode/src/project/bootstrap.ts
 import { Plugin } from "../plugin"
 import { Share } from "../share/share"
 import { Format } from "../format"
@@ -11,6 +13,7 @@ import { Instance } from "./instance"
 import { Vcs } from "./vcs"
 import { Log } from "@/util/log"
 import { ShareNext } from "@/share/share-next"
+import { ConfigWatcher } from "../config/watcher"
 
 export async function InstanceBootstrap() {
   Log.Default.info("bootstrapping", { directory: Instance.directory })
@@ -20,6 +23,7 @@ export async function InstanceBootstrap() {
   Format.init()
   await LSP.init()
   FileWatcher.init()
+  ConfigWatcher.init()  // [COMCLERK-ADDED] Config hot-reload watcher
   File.init()
   Vcs.init()
 

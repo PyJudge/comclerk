@@ -196,6 +196,32 @@ const log = Log.create({ service: "my-service" })
 log.info("message", { data: "value" })
 ```
 
+### Config Hot Reload
+
+`.opencode/agent/*.md`, `.opencode/mode/*.md`, `.opencode/command/*.md` 파일 및 `opencode.json` 변경 시 서버 재시작 없이 자동 반영됩니다.
+
+**구현 파일:**
+- `src/config/watcher.ts` - Node.js `fs.watch` 기반 ConfigWatcher
+- `src/project/bootstrap.ts` - ConfigWatcher.init() 호출
+
+**동작 방식:**
+1. 파일 변경 감지 (fs.watch)
+2. 300ms debounce
+3. `Instance.dispose()` 호출로 캐시 무효화
+4. 다음 API 요청 시 설정 자동 재로드
+
+**수동 테스트:**
+```bash
+# 서버 실행 중에
+curl -s http://localhost:4096/agent | jq '.[].name'  # 현재 agent 목록
+
+# agent 파일 수정
+echo '...' > pdfs/.opencode/agent/test.md
+
+# 1초 후 확인 - 변경사항 자동 반영
+sleep 1 && curl -s http://localhost:4096/agent | jq '.[].name'
+```
+
 ## Testing Guidelines
 
 - Tests live in `packages/opencode/test/` mirroring `src/` structure
