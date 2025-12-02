@@ -3,11 +3,12 @@ import { test, expect } from '@playwright/test';
 test.describe('TC-002: 설정 페이지', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings');
+    await page.waitForLoadState('networkidle');
   });
 
   test('설정 페이지 기본 요소 확인', async ({ page }) => {
-    // 1. 설정 페이지 타이틀 확인
-    await expect(page.getByRole('heading', { name: /Settings/i })).toBeVisible();
+    // 1. 설정 페이지 타이틀 확인 (한글)
+    await expect(page.getByRole('heading', { name: '설정' })).toBeVisible();
 
     // 2. 스크린샷 저장
     await page.screenshot({ path: 'e2e/screenshots/TC-002-settings-page.png', fullPage: true });
