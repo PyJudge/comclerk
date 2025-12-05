@@ -1,8 +1,11 @@
+// [COMCLERK-MODIFIED] 2025-12-02: Assistant → ComClerk 이름 변경, Streamdown 마크다운 렌더링 추가
 'use client'
 
 import { cn } from '@/lib/utils'
 import { ToolOutput } from '../tool/tool-output'
-import { Message } from '@/types'
+import { SubtaskOutput } from '../tool/subtask-output'
+import { Message, SubtaskPart } from '@/types'
+import { Streamdown } from 'streamdown'
 
 interface MessageItemProps {
   message: Message
@@ -32,7 +35,7 @@ export function MessageItem({ message }: MessageItemProps) {
               isUser ? 'text-primary' : 'text-muted-foreground'
             )}
           >
-            {isUser ? '> You' : '● Assistant'}
+            {isUser ? '> 권판사' : '● 컴연권'}
           </span>
           {!isUser && message.modelID && (
             <span className="text-xs text-muted-foreground">
@@ -52,13 +55,25 @@ export function MessageItem({ message }: MessageItemProps) {
           {displayParts?.map((part) => (
             <div key={part.id}>
               {part.type === 'text' && 'text' in part && part.text && (
-                <div className="text-sm whitespace-pre-wrap font-sans leading-relaxed">
-                  {part.text}
+                <div className="font-sans leading-relaxed whitespace-pre-wrap" style={{ fontSize: '15px' }}>
+                  {isUser ? (
+                    // User messages: plain text without markdown
+                    part.text
+                  ) : (
+                    // Assistant messages: render markdown
+                    <Streamdown isAnimating={!message.time?.completed}>
+                      {part.text}
+                    </Streamdown>
+                  )}
                 </div>
               )}
 
               {part.type === 'tool' && (
                 <ToolOutput part={part} />
+              )}
+
+              {part.type === 'subtask' && (
+                <SubtaskOutput part={part as SubtaskPart} />
               )}
 
               {part.type === 'reasoning' && 'text' in part && part.text && (

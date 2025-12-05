@@ -34,6 +34,9 @@ NC='\033[0m' # No Color
 BACKEND_PID=""
 WEB_PID=""
 
+# 로그 파일
+BACKEND_LOG="$SCRIPT_DIR/backend.log"
+
 # 종료 시 프로세스 정리
 cleanup() {
     echo -e "\n${YELLOW}[ComClerk] 서버를 종료합니다...${NC}"
@@ -73,10 +76,14 @@ start_backend() {
     kill_port $BACKEND_PORT
     echo -e "${BLUE}[Backend] comclerk-backend API 서버 시작 중 (port $BACKEND_PORT)...${NC}"
     echo -e "${BLUE}[Backend] 프로젝트 디렉토리: $PDF_DIR${NC}"
+    echo -e "${BLUE}[Backend] 로그 파일: $BACKEND_LOG${NC}"
+
+    # 이전 로그 파일 비우기
+    > "$BACKEND_LOG"
 
     # 백엔드 디렉토리에서 실행하되, --directory로 pdfs를 프로젝트로 지정
     cd "$BACKEND_DIR"
-    bun run --cwd packages/opencode src/index.ts serve --port $BACKEND_PORT --directory "$PDF_DIR" &
+    bun run --cwd packages/opencode src/index.ts serve --port $BACKEND_PORT --directory "$PDF_DIR" --print-logs 2>&1 | tee -a "$BACKEND_LOG" &
     BACKEND_PID=$!
     echo -e "${GREEN}[Backend] PID: $BACKEND_PID (http://localhost:$BACKEND_PORT)${NC}"
 }
@@ -141,6 +148,8 @@ main() {
     echo -e "${BLUE}  Web UI:      http://localhost:$WEB_PORT (3패널 워크스페이스)${NC}"
     echo -e "${BLUE}  Dashboard:   http://localhost:$WEB_PORT/dashboard${NC}"
     echo -e "${BLUE}  프로젝트:    $PDF_DIR${NC}"
+    echo -e "${YELLOW}  백엔드 로그: tail -f $BACKEND_LOG${NC}"
+    echo -e "${YELLOW}  진단 로그:   tail -f $BACKEND_LOG | grep '\\[DIAG\\]'${NC}"
     echo -e "${YELLOW}종료하려면 Ctrl+C를 누르세요.${NC}"
     echo ""
 

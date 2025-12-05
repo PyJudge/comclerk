@@ -2,14 +2,24 @@
 
 import { useEffect, useRef } from 'react'
 import { MessageItem } from './message-item'
-import { Message } from '@/types'
+import { PermissionInline } from '../permission/permission-inline'
+import { Message, Permission } from '@/types'
 
 interface MessageListProps {
   messages: Message[]
   isLoading?: boolean
+  currentPermission?: Permission | null
+  onPermissionReply?: (response: 'once' | 'always' | 'reject') => void
+  isPermissionPending?: boolean
 }
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
+export function MessageList({
+  messages,
+  isLoading,
+  currentPermission,
+  onPermissionReply,
+  isPermissionPending
+}: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -41,6 +51,13 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
       {messages.map((message) => (
         <MessageItem key={message.id} message={message} />
       ))}
+      {currentPermission && onPermissionReply && (
+        <PermissionInline
+          permission={currentPermission}
+          onReply={onPermissionReply}
+          isPending={isPermissionPending}
+        />
+      )}
       <div ref={bottomRef} />
     </div>
   )

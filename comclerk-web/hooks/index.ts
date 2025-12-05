@@ -24,5 +24,19 @@ export {
   useOAuthAuthorize,
   useOAuthCallback,
   useSetApiKey,
+  useProviderLogout,
 } from './use-auth'
 export type { AuthMethod, OAuthAuthorization } from './use-auth'
+
+// Agent mutation hooks
+export {
+  useCustomAgents,
+  useCustomAgent,
+  useCreateAgent,
+  useUpdateAgent,
+  useDeleteAgent,
+} from './use-agent-mutations'
+export type { CreateAgentInput, UpdateAgentInput } from './use-agent-mutations'
+
+// Permission hooks
+export { usePermissionReply, usePermissionPolling } from './use-permissions'

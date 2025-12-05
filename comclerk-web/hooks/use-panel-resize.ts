@@ -20,7 +20,7 @@ const DEFAULT_CONSTRAINTS: PanelConstraints = {
   minLeftWidth: 120,
   maxLeftWidth: 400,
   minRightWidth: 200,
-  maxRightWidth: 500,
+  maxRightWidth: 700,
   minCenterWidth: 200,
 }
 
@@ -30,7 +30,7 @@ export function usePanelResize(
 ) {
   const {
     initialLeftWidth = 240,
-    initialRightWidth = 320,
+    initialRightWidth = 520,
     constraints: customConstraints,
   } = options
 

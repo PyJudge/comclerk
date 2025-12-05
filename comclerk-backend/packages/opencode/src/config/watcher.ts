@@ -24,19 +24,19 @@ export namespace ConfigWatcher {
     if (!filename || !shouldReload(filename)) return
 
     const fullPath = path.join(watchPath, filename)
-    log.info("config file changed", { file: fullPath, event: eventType })
+    log.debug("config file changed", { file: fullPath, event: eventType })
 
     // Debounce: 여러 파일 동시 변경 시 한 번만 dispose
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(async () => {
-      log.info("disposing instance due to config change")
+      log.debug("disposing instance due to config change")
       await Instance.dispose()
     }, DEBOUNCE_MS)
   }
 
   const state = Instance.state(
     async () => {
-      log.info("init", { directory: Instance.directory })
+      log.debug("init", { directory: Instance.directory })
 
       const watchers: fs.FSWatcher[] = []
 
@@ -54,7 +54,7 @@ export namespace ConfigWatcher {
               handleChange(eventType, filename, dir)
             })
             watchers.push(watcher)
-            log.info("watching directory", { dir })
+            log.debug("watching directory", { dir })
           }
         } catch (err) {
           log.warn("failed to watch directory", { dir, error: err })
@@ -70,7 +70,7 @@ export namespace ConfigWatcher {
               handleChange(eventType, configFile, Instance.directory)
             })
             watchers.push(watcher)
-            log.info("watching file", { file: configPath })
+            log.debug("watching file", { file: configPath })
           }
         } catch (err) {
           // 파일이 없으면 무시

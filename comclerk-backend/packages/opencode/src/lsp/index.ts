@@ -240,7 +240,7 @@ export namespace LSP {
   }
 
   export async function touchFile(input: string, waitForDiagnostics?: boolean) {
-    log.info("touching file", { file: input })
+    log.debug("touching file", { file: input })
     const clients = await getClients(input)
     await run(async (client) => {
       if (!clients.includes(client)) return

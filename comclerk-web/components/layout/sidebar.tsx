@@ -1,21 +1,39 @@
 // [COMCLERK-MODIFIED] 2024-12-01: Sessions 링크를 /dashboard/sessions로 변경
+// [COMCLERK-MODIFIED] 2025-12-01: Agent 설정 버튼 추가, 세션 드롭다운 구현
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useSessions, useCreateSession } from '@/hooks'
 import { useRouter } from 'next/navigation'
+import { useSessionStore } from '@/stores/session-store'
+import { Bot, ChevronDown, Plus, Settings, MessageSquare } from 'lucide-react'
 
 export function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(true) // Default collapsed
+  const [isCollapsed, setIsCollapsed] = useState(true)
+  const [sessionDropdownOpen, setSessionDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
   const { data: sessions } = useSessions()
   const createSession = useCreateSession()
+  const { currentSession } = useSessionStore()
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setSessionDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleNewSession = async () => {
+    setSessionDropdownOpen(false)
     try {
       const session = await createSession.mutateAsync(undefined)
       if (session?.id) {
@@ -26,25 +44,19 @@ export function Sidebar() {
     }
   }
 
+  const handleSelectSession = (sessionId: string) => {
+    setSessionDropdownOpen(false)
+    router.push(`/dashboard/session/${sessionId}`)
+  }
+
+  // Get current session title
+  const currentSessionTitle = currentSession?.title || 'Select Session'
+
   const navItems = [
-    {
-      href: '/dashboard/sessions',
-      label: 'Sessions',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-      ),
-    },
     {
       href: '/settings',
       label: 'Settings',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      ),
+      icon: <Settings className="w-5 h-5" />,
     },
   ]
 
@@ -81,7 +93,7 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Expand button when collapsed - positioned below header */}
+      {/* Expand button when collapsed */}
       {isCollapsed && (
         <button
           onClick={() => setIsCollapsed(false)}
@@ -99,27 +111,113 @@ export function Sidebar() {
         </button>
       )}
 
-      {/* New Session Button */}
+      {/* Agent Settings Button */}
       <div className={cn('p-2', !isCollapsed && 'p-4')}>
-        <button
-          onClick={handleNewSession}
-          disabled={createSession.isPending}
+        <Link
+          href="/agents"
           className={cn(
             'w-full py-2.5 rounded-lg',
             'bg-primary text-primary-foreground',
             'hover:bg-primary/90 transition-colors',
             'flex items-center justify-center gap-2',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
             isCollapsed ? 'px-2' : 'px-4'
           )}
-          title={isCollapsed ? 'New Session' : undefined}
+          title={isCollapsed ? 'Agent Settings' : undefined}
         >
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          {!isCollapsed && (createSession.isPending ? 'Creating...' : 'New Session')}
-        </button>
+          <Bot className="w-4 h-4 flex-shrink-0" />
+          {!isCollapsed && 'Agent Settings'}
+        </Link>
       </div>
+
+      {/* Session Dropdown */}
+      {!isCollapsed && (
+        <div className="px-4 pb-2" ref={dropdownRef}>
+          <div className="relative">
+            <button
+              onClick={() => setSessionDropdownOpen(!sessionDropdownOpen)}
+              className={cn(
+                'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg',
+                'bg-muted/50 hover:bg-muted transition-colors',
+                'text-sm font-medium'
+              )}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <MessageSquare className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                <span className="truncate">{currentSessionTitle}</span>
+              </div>
+              <ChevronDown className={cn(
+                'w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform',
+                sessionDropdownOpen && 'rotate-180'
+              )} />
+            </button>
+
+            {/* Dropdown Menu */}
+            {sessionDropdownOpen && (
+              <div className="absolute left-0 right-0 top-full mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 max-h-64 overflow-auto">
+                {/* Session List */}
+                {sessions && sessions.length > 0 ? (
+                  sessions.slice(0, 10).map((session) => {
+                    const isActive = pathname === `/dashboard/session/${session.id}`
+                    return (
+                      <button
+                        key={session.id}
+                        onClick={() => handleSelectSession(session.id)}
+                        className={cn(
+                          'w-full px-3 py-2 text-left text-sm truncate transition-colors',
+                          isActive
+                            ? 'bg-accent text-accent-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                        )}
+                      >
+                        {session.title || 'Untitled Session'}
+                      </button>
+                    )
+                  })
+                ) : (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    No sessions yet
+                  </div>
+                )}
+
+                {/* Divider */}
+                <div className="my-1 border-t border-border" />
+
+                {/* New Session Button */}
+                <button
+                  onClick={handleNewSession}
+                  disabled={createSession.isPending}
+                  className={cn(
+                    'w-full px-3 py-2 text-left text-sm transition-colors',
+                    'text-primary hover:bg-accent/50',
+                    'flex items-center gap-2',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
+                >
+                  <Plus className="w-4 h-4" />
+                  {createSession.isPending ? 'Creating...' : 'New Session'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Collapsed: Session icon with tooltip */}
+      {isCollapsed && (
+        <div className="px-2 pb-2">
+          <Link
+            href="/dashboard/sessions"
+            className={cn(
+              'flex items-center justify-center p-2 rounded-lg',
+              'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+              'transition-colors'
+            )}
+            title="Sessions"
+          >
+            <MessageSquare className="w-5 h-5" />
+          </Link>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="px-2 space-y-1">
@@ -145,33 +243,8 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Recent Sessions */}
-      {!isCollapsed && (
-        <div className="flex-1 overflow-y-auto mt-4 px-2">
-          <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Recent Sessions
-          </h3>
-          <div className="space-y-1">
-            {sessions?.slice(0, 10).map((session) => {
-              const isActive = pathname === `/dashboard/session/${session.id}`
-              return (
-                <Link
-                  key={session.id}
-                  href={`/dashboard/session/${session.id}`}
-                  className={cn(
-                    'block px-3 py-2 rounded-lg text-sm truncate transition-colors',
-                    isActive
-                      ? 'bg-accent text-accent-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                  )}
-                >
-                  {session.title || 'Untitled Session'}
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {/* Spacer */}
+      <div className="flex-1" />
 
       {/* Footer */}
       {!isCollapsed && (

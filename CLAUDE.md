@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ComClerk는 법률 문서 분석을 위한 AI 코딩 에이전트입니다. 이 저장소는 세 가지 주요 구성 요소를 포함합니다:
+ComClerk는 법률 문서 분석을 위한 AI 에이전트입니다. 이 저장소는 세 가지 주요 구성 요소를 포함합니다:
 
 - **comclerk-backend/** - 백엔드 서버 (OpenCode 기반, Bun + Turborepo)
 - **comclerk-web/** - Next.js 웹 프론트엔드
@@ -64,6 +64,7 @@ cd comclerk-web && NEXT_PUBLIC_OPENCODE_API_URL=http://localhost:4096 bun dev
 - **Fail fast**: Let errors propagate naturally; avoid defensive programming that hides bugs
 - **Immutability**: Prefer `const` over `let`; use functional patterns
 - **Single-word naming**: Choose concise identifiers when they remain descriptive
+- **Don't stop until it really works**: 반드시 되는 것을 playwright 등으로 확인하고 종료할 것. 될 것이라는 추측만으로 코딩을 종료하지 말 것.
 
 ### Code Style (Strictly Enforced)
 

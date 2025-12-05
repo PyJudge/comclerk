@@ -27,6 +27,9 @@ export function useSessionEvents(sessionId: string | null, onEvent?: EventHandle
         case 'session.deleted':
           queryClient.invalidateQueries({ queryKey: ['sessions'] })
           break
+        case 'permission.updated':
+          // Permission events are handled by custom handler
+          break
       }
 
       // Call custom handler if provided
@@ -54,10 +57,26 @@ export function useSessionEvents(sessionId: string | null, onEvent?: EventHandle
           return
         }
 
-        // Use async iterator pattern per SDK docs
-        const responseData = 'data' in response ? response.data : null
-        if (responseData && typeof responseData === 'object' && 'stream' in responseData) {
-          const stream = (responseData as { stream: AsyncIterable<Event> }).stream
+        // Check if response itself is iterable or has stream
+        let stream: AsyncIterable<Event> | null = null
+
+        if ('data' in response && response.data && typeof response.data === 'object') {
+          if ('stream' in response.data) {
+            stream = (response.data as { stream: AsyncIterable<Event> }).stream
+          }
+        }
+
+        // Try response itself as stream
+        if (!stream && typeof response === 'object' && 'stream' in response) {
+          stream = (response as { stream: AsyncIterable<Event> }).stream
+        }
+
+        // Try response itself as async iterable
+        if (!stream && Symbol.asyncIterator in (response as any)) {
+          stream = response as AsyncIterable<Event>
+        }
+
+        if (stream) {
           for await (const event of stream) {
             if (!isSubscribed) break
             // Filter events for this specific session

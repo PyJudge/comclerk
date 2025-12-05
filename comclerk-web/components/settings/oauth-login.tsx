@@ -1,26 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { useProviderAuthMethods, useOAuthAuthorize, useOAuthCallback, useConnectedProviders } from '@/hooks'
+import { useProviderAuthMethods, useOAuthAuthorize, useOAuthCallback, useConnectedProviders, useProviderLogout } from '@/hooks'
 import { cn } from '@/lib/utils'
 
 const PROVIDER_ICONS: Record<string, string> = {
   anthropic: 'A',
   openai: 'O',
-  'github-copilot': 'G',
 }
 
 const PROVIDER_NAMES: Record<string, string> = {
   anthropic: 'Anthropic',
-  openai: 'OpenAI',
-  'github-copilot': 'GitHub Copilot',
+  openai: 'OpenAI (Codex)',
 }
 
 const PROVIDER_COLORS: Record<string, string> = {
   anthropic: 'bg-orange-500',
-  openai: 'bg-green-500',
-  'github-copilot': 'bg-purple-500',
+  openai: 'bg-emerald-600',
 }
+
+// GitHub Copilot은 사용하지 않으므로 UI에서 숨김
+const HIDDEN_PROVIDERS = ['github-copilot', 'github-copilot-enterprise']
 
 interface OAuthState {
   providerId: string
@@ -35,11 +35,13 @@ export function OAuthLogin() {
   const { data: connectedProviders = [] } = useConnectedProviders()
   const oauthAuthorize = useOAuthAuthorize()
   const oauthCallback = useOAuthCallback()
+  const providerLogout = useProviderLogout()
 
   const [oauthState, setOauthState] = useState<OAuthState | null>(null)
   const [manualCode, setManualCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [logoutProviderId, setLogoutProviderId] = useState<string | null>(null)
 
   const handleOAuthStart = async (providerId: string, methodIndex: number) => {
     setError(null)
@@ -71,8 +73,15 @@ export function OAuthLogin() {
               clearInterval(checkInterval)
               setOauthState(null)
               setSuccess(`Successfully connected to ${PROVIDER_NAMES[providerId] || providerId}!`)
-            } catch {
-              // Still pending, continue polling
+            } catch (e) {
+              // OauthMissing 또는 치명적 에러면 폴링 중지
+              const errorMsg = e instanceof Error ? e.message : String(e)
+              if (errorMsg.includes('OauthMissing') || errorMsg.includes('Missing') || errorMsg.includes('Failed')) {
+                clearInterval(checkInterval)
+                setOauthState(null)
+                setError('OAuth session expired. Please try again.')
+              }
+              // 그 외 에러는 계속 폴링 (아직 pending 상태일 수 있음)
             }
           }, 2000)
 
@@ -113,6 +122,20 @@ export function OAuthLogin() {
     setOauthState(null)
     setManualCode('')
     setError(null)
+  }
+
+  const handleLogout = async (providerId: string) => {
+    setError(null)
+    setSuccess(null)
+    setLogoutProviderId(providerId)
+    try {
+      await providerLogout.mutateAsync(providerId)
+      setSuccess(`Successfully disconnected from ${PROVIDER_NAMES[providerId] || providerId}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to logout')
+    } finally {
+      setLogoutProviderId(null)
+    }
   }
 
   if (authLoading) {
@@ -225,7 +248,9 @@ export function OAuthLogin() {
       )}
 
       <div className="space-y-3">
-        {Object.entries(authMethods).map(([providerId, methods]) => {
+        {Object.entries(authMethods)
+          .filter(([providerId]) => !HIDDEN_PROVIDERS.includes(providerId))
+          .map(([providerId, methods]) => {
           const oauthMethods = methods.filter((m) => m.type === 'oauth')
           if (oauthMethods.length === 0) return null
 
@@ -234,21 +259,37 @@ export function OAuthLogin() {
               key={providerId}
               className="p-4 rounded-lg border bg-card space-y-3"
             >
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    'w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold',
-                    PROVIDER_COLORS[providerId] || 'bg-gray-500'
-                  )}
-                >
-                  {PROVIDER_ICONS[providerId] || providerId[0].toUpperCase()}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      'w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold',
+                      PROVIDER_COLORS[providerId] || 'bg-gray-500'
+                    )}
+                  >
+                    {PROVIDER_ICONS[providerId] || providerId[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <h4 className="font-medium">{PROVIDER_NAMES[providerId] || providerId}</h4>
+                    <p className="text-xs text-muted-foreground">
+                      {connectedProviders.includes(providerId) ? 'Connected' : 'Not connected'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-medium">{PROVIDER_NAMES[providerId] || providerId}</h4>
-                  <p className="text-xs text-muted-foreground">
-                    {connectedProviders.includes(providerId) ? 'Connected' : 'Not connected'}
-                  </p>
-                </div>
+                {connectedProviders.includes(providerId) && (
+                  <button
+                    onClick={() => handleLogout(providerId)}
+                    disabled={logoutProviderId === providerId}
+                    className={cn(
+                      'text-sm px-3 py-1.5 rounded-md',
+                      'text-destructive border border-destructive/30',
+                      'hover:bg-destructive/10 transition-colors',
+                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                    )}
+                  >
+                    {logoutProviderId === providerId ? 'Disconnecting...' : 'Disconnect'}
+                  </button>
+                )}
               </div>
 
               <div className="space-y-2">

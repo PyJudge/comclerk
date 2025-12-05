@@ -308,14 +308,14 @@ export namespace File {
   }
 
   export async function search(input: { query: string; limit?: number; dirs?: boolean }) {
-    log.info("search", { query: input.query })
+    log.debug("search", { query: input.query })
     const limit = input.limit ?? 100
     const result = await state().then((x) => x.files())
     if (!input.query)
       return input.dirs !== false ? result.dirs.toSorted().slice(0, limit) : result.files.slice(0, limit)
     const items = input.dirs !== false ? [...result.files, ...result.dirs] : result.files
     const sorted = fuzzysort.go(input.query, items, { limit: limit }).map((r) => r.target)
-    log.info("search", { query: input.query, results: sorted.length })
+    log.debug("search", { query: input.query, results: sorted.length })
     return sorted
   }
 }

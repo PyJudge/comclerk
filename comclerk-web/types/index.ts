@@ -22,14 +22,21 @@ export interface ReasoningPart {
   text: string
 }
 
+export interface ToolState {
+  status: 'pending' | 'running' | 'completed' | 'error'
+  input?: Record<string, unknown>
+  output?: unknown
+  title?: string
+  metadata?: Record<string, unknown>
+  time?: { start: number; end: number }
+}
+
 export interface ToolPart {
   id: string
   type: 'tool'
   tool?: string
-  state?: 'pending' | 'running' | 'completed' | 'error'
-  input?: Record<string, unknown>
-  output?: unknown
-  error?: string
+  callID?: string
+  state?: ToolState
 }
 
 export interface StepStartPart {
@@ -47,7 +54,17 @@ export interface StepFinishPart {
   tokens?: MessageTokens
 }
 
-export type Part = TextPart | FilePart | ReasoningPart | ToolPart | StepStartPart | StepFinishPart
+export interface SubtaskPart {
+  id: string
+  type: 'subtask'
+  prompt: string
+  description: string
+  agent: string
+  state?: 'pending' | 'running' | 'completed' | 'error'
+  output?: string
+}
+
+export type Part = TextPart | FilePart | ReasoningPart | ToolPart | StepStartPart | StepFinishPart | SubtaskPart
 
 // Message types
 export interface MessageTokens {
@@ -169,6 +186,27 @@ export interface Agent {
   }
 }
 
+// Extended Agent type for full settings
+export interface AgentFull {
+  name: string
+  description?: string
+  mode?: 'primary' | 'subagent' | 'all'
+  temperature?: number
+  topP?: number
+  color?: string
+  prompt?: string
+  model?: string
+  permission?: {
+    edit?: 'allow' | 'ask' | 'deny'
+    bash?: Record<string, 'allow' | 'ask' | 'deny'>
+    webfetch?: 'allow' | 'ask' | 'deny'
+    doom_loop?: 'allow' | 'ask' | 'deny'
+    external_directory?: 'allow' | 'ask' | 'deny'
+  }
+  tools?: Record<string, boolean>
+  builtIn: boolean
+}
+
 // Event types
 export interface Event {
   type: string
@@ -182,4 +220,21 @@ export interface Event {
 export interface GlobalEvent {
   directory: string
   payload: Event
+}
+
+// Permission types
+export interface Permission {
+  id: string
+  type: string
+  pattern?: string | string[]
+  sessionID: string
+  messageID: string
+  callID?: string
+  title: string
+  metadata: {
+    [key: string]: unknown
+  }
+  time: {
+    created: number
+  }
 }

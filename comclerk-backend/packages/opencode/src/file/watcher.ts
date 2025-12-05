@@ -33,7 +33,7 @@ export namespace FileWatcher {
   // Original: Git 저장소가 아니면 early return
   const state = Instance.state(
     async () => {
-      log.info("init")
+      log.debug("init")
       const cfg = await Config.get()
       const backend = (() => {
         if (process.platform === "win32") return "windows"
@@ -44,11 +44,11 @@ export namespace FileWatcher {
         log.error("watcher backend not supported", { platform: process.platform })
         return {}
       }
-      log.info("watcher backend", { platform: process.platform, backend })
+      log.debug("watcher backend", { platform: process.platform, backend })
       const subscribe: ParcelWatcher.SubscribeCallback = (err, evts) => {
         if (err) return
         for (const evt of evts) {
-          log.info("event", evt)
+          log.debug("event", evt)
           if (evt.type === "create") Bus.publish(Event.Updated, { file: evt.path, event: "add" })
           if (evt.type === "update") Bus.publish(Event.Updated, { file: evt.path, event: "change" })
           if (evt.type === "delete") Bus.publish(Event.Updated, { file: evt.path, event: "unlink" })

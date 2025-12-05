@@ -1,9 +1,13 @@
+// [COMCLERK-MODIFIED] 2025-12-02: ESC 키로 AI 응답 생성 중단 기능 추가
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { useSendMessageAsync, useAgents } from '@/hooks'
+import { useSendMessageAsync, useAgents, useAbortSession } from '@/hooks'
 import { useModel } from '@/contexts'
 import { cn } from '@/lib/utils'
+import { useAgentStore } from '@/stores/agent-store'
+import { useChatStore } from '@/stores/chat-store'
+import type { AgentFull } from '@/types'
 
 interface MessageInputProps {
   sessionId: string
@@ -15,16 +19,27 @@ interface Agent {
   name: string
   description?: string
   mode?: string
+  color?: string
 }
 
 export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
   const [message, setMessage] = useState('')
   const [showModelSelector, setShowModelSelector] = useState(false)
-  const [selectedAgent, setSelectedAgent] = useState<string>('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const sendMessage = useSendMessageAsync()
+  const abortSession = useAbortSession()
+  const isGenerating = useChatStore((state) => state.isGenerating)
+  const setIsGenerating = useChatStore((state) => state.setIsGenerating)
   const { selectedModel, setSelectedModel, providers, connectedProviders, isLoading: modelLoading } = useModel()
   const { data: agents } = useAgents()
+
+  // Agent Store integration
+  const {
+    selectedAgent,
+    setSelectedAgent,
+    setAgents,
+    cycleAgent,
+  } = useAgentStore()
 
   // Filter to only show primary/all mode agents (not subagent which are internal)
   const availableAgents = useMemo(() => {
@@ -34,12 +49,29 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
     )
   }, [agents])
 
-  // Set default agent when availableAgents loads
+  // Sync agents to store when they load
   useEffect(() => {
-    if (availableAgents.length > 0 && !selectedAgent) {
-      setSelectedAgent(availableAgents[0].name)
+    if (agents && agents.length > 0) {
+      const agentsFull = (agents as Agent[]).map((a): AgentFull => ({
+        name: a.name,
+        description: a.description,
+        mode: (a.mode as AgentFull['mode']) || 'all',
+        color: a.color,
+        builtIn: ['general', 'explore', 'build', 'plan'].includes(a.name),
+      }))
+      setAgents(agentsFull)
     }
-  }, [availableAgents, selectedAgent])
+  }, [agents, setAgents])
+
+  // Set default agent when availableAgents loads or when selectedAgent is invalid
+  useEffect(() => {
+    if (availableAgents.length > 0) {
+      const isValidAgent = availableAgents.some(a => a.name === selectedAgent)
+      if (!selectedAgent || !isValidAgent) {
+        setSelectedAgent(availableAgents[0].name)
+      }
+    }
+  }, [availableAgents, selectedAgent, setSelectedAgent])
 
   // Get connected providers with their models (exclude opencode/zen for now)
   const connectedProviderData = providers.filter(p =>
@@ -54,6 +86,20 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
     }
   }, [message])
 
+  // Global ESC key listener for aborting generation
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isGenerating) {
+        e.preventDefault()
+        abortSession.mutate(sessionId)
+        setIsGenerating(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleGlobalKeyDown)
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [isGenerating, sessionId, abortSession, setIsGenerating])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -62,6 +108,7 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
 
     try {
       setMessage('')
+      setIsGenerating(true)
       await sendMessage.mutateAsync({
         sessionId,
         text: trimmed,
@@ -74,6 +121,7 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
     } catch (error) {
       console.error('Failed to send message:', error)
       setMessage(trimmed) // Restore message on error
+      setIsGenerating(false)
     }
   }
 
@@ -88,18 +136,14 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
     // Tab key to cycle agents
     if (e.key === 'Tab' && !e.shiftKey && availableAgents.length > 1) {
       e.preventDefault()
-      const currentIndex = availableAgents.findIndex(a => a.name === selectedAgent)
-      const nextIndex = (currentIndex + 1) % availableAgents.length
-      setSelectedAgent(availableAgents[nextIndex].name)
+      cycleAgent('next')
       return
     }
 
     // Shift+Tab to cycle agents backwards
     if (e.key === 'Tab' && e.shiftKey && availableAgents.length > 1) {
       e.preventDefault()
-      const currentIndex = availableAgents.findIndex(a => a.name === selectedAgent)
-      const prevIndex = currentIndex <= 0 ? availableAgents.length - 1 : currentIndex - 1
-      setSelectedAgent(availableAgents[prevIndex].name)
+      cycleAgent('prev')
       return
     }
 
@@ -244,7 +288,7 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
         </button>
       </div>
       <p className="text-xs text-zinc-500 mt-2 text-center">
-        Enter로 전송 · Shift+Enter로 줄바꿈 · Tab으로 에이전트 전환
+        Enter로 전송 · Shift+Enter로 줄바꿈 · Tab으로 에이전트 전환 · ESC로 생성 중단
       </p>
     </form>
   )

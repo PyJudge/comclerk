@@ -22,6 +22,8 @@ export function useProviderAuthMethods() {
       if (result.error) throw new Error('Failed to fetch auth methods')
       return result.data as Record<string, AuthMethod[]>
     },
+    retry: 2,
+    staleTime: 30000, // Cache for 30 seconds
   })
 }
 
@@ -97,6 +99,30 @@ export function useSetApiKey() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['providers'] })
       queryClient.invalidateQueries({ queryKey: ['connected-providers'] })
+    },
+  })
+}
+
+// [COMCLERK-ADDED] 2024-12-02: Provider logout hook
+export function useProviderLogout() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (providerId: string) => {
+      // Call the logout API endpoint directly since SDK may not have this method yet
+      const baseUrl = process.env.NEXT_PUBLIC_OPENCODE_API_URL || 'http://localhost:4096'
+      const response = await fetch(`${baseUrl}/provider/${providerId}/logout`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        throw new Error('Failed to logout from provider')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['providers'] })
+      queryClient.invalidateQueries({ queryKey: ['connected-providers'] })
+      queryClient.invalidateQueries({ queryKey: ['provider-auth-methods'] })
     },
   })
 }

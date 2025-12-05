@@ -607,6 +607,9 @@ export namespace MessageV2 {
       }
 
       if (msg.info.role === "assistant") {
+        // Collect tool result messages to add AFTER the assistant message
+        const toolResultMessages: UIMessage[] = []
+
         result.push({
           id: msg.info.id,
           role: "assistant",
@@ -629,7 +632,7 @@ export namespace MessageV2 {
               if (part.state.status === "completed") {
                 // Priority 1: structuredContent (preserves text/image ordering)
                 if (part.state.structuredContent?.length) {
-                  result.push({
+                  toolResultMessages.push({
                     id: Identifier.ascending("message"),
                     role: "user",
                     parts: part.state.structuredContent.map((p) => {
@@ -657,7 +660,7 @@ export namespace MessageV2 {
                 }
                 // Priority 2: attachments (legacy fallback)
                 if (part.state.attachments?.length) {
-                  result.push({
+                  toolResultMessages.push({
                     id: Identifier.ascending("message"),
                     role: "user",
                     parts: [
@@ -711,10 +714,14 @@ export namespace MessageV2 {
             return []
           }),
         })
+
+        // Add tool result messages AFTER the assistant message
+        result.push(...toolResultMessages)
       }
     }
 
-    return convertToModelMessages(result.filter((msg) => msg.parts.length > 0))
+    const filtered = result.filter((msg) => msg.parts.length > 0)
+    return convertToModelMessages(filtered)
   }
 
   export const stream = fn(Identifier.schema("session"), async function* (sessionID) {

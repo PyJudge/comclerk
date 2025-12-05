@@ -71,6 +71,7 @@ export namespace ProviderAuth {
     },
   )
 
+  // [COMCLERK-MODIFIED] 2024-12-02: Clear pending state after callback to prevent duplicate code exchange
   export const callback = fn(
     z.object({
       providerID: z.string(),
@@ -78,8 +79,13 @@ export namespace ProviderAuth {
       code: z.string().optional(),
     }),
     async (input) => {
-      const match = await state().then((s) => s.pending[input.providerID])
+      const s = await state()
+      const match = s.pending[input.providerID]
       if (!match) throw new OauthMissing({ providerID: input.providerID })
+
+      // Clear pending state immediately to prevent duplicate callback calls
+      delete s.pending[input.providerID]
+
       let result
 
       if (match.method === "code") {

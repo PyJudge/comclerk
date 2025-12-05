@@ -22,8 +22,8 @@ export function PDFViewer({
   const [pdf, setPdf] = useState<import('pdfjs-dist').PDFDocumentProxy | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
-  const [scale, setScale] = useState(1.0)
-  const [rotation, setRotation] = useState(0)
+  const scale = 1.0
+  const rotation = 0
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pageInput, setPageInput] = useState('1')
@@ -99,16 +99,14 @@ export function PDFViewer({
     [pdfjsLib, onError, onLoadingChange]
   )
 
-  // 페이지 렌더링
+  // 페이지 렌더링 (깜빡임 방지를 위한 오프스크린 캔버스 사용)
   const renderPage = useCallback(
     async (pageNumber: number) => {
       if (!pdf || !pdfjsLib) return
 
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
       const canvas = canvasRef.current
       if (!canvas) {
-        setTimeout(() => renderPage(pageNumber), 200)
+        setTimeout(() => renderPage(pageNumber), 50)
         return
       }
 
@@ -123,24 +121,35 @@ export function PDFViewer({
           rotation: rotation,
         })
 
-        canvas.width = viewport.width
-        canvas.height = viewport.height
-        canvas.style.width = viewport.width + 'px'
-        canvas.style.height = viewport.height + 'px'
+        // 오프스크린 캔버스에 먼저 렌더링 (깜빡임 방지)
+        const offscreenCanvas = document.createElement('canvas')
+        offscreenCanvas.width = viewport.width
+        offscreenCanvas.height = viewport.height
+        const offscreenContext = offscreenCanvas.getContext('2d')
 
-        context.clearRect(0, 0, canvas.width, canvas.height)
+        if (!offscreenContext) return
 
         const renderContext = {
-          canvasContext: context,
+          canvasContext: offscreenContext,
           viewport: viewport,
         }
 
         await page.render(renderContext as Parameters<typeof page.render>[0]).promise
+
+        // 렌더링 완료 후 메인 캔버스에 복사 (크기 변경 최소화)
+        if (canvas.width !== viewport.width || canvas.height !== viewport.height) {
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          canvas.style.width = viewport.width + 'px'
+          canvas.style.height = viewport.height + 'px'
+        }
+
+        context.drawImage(offscreenCanvas, 0, 0)
       } catch {
         // 렌더링 오류는 조용히 처리
       }
     },
-    [pdf, scale, rotation, pdfjsLib]
+    [pdf, pdfjsLib]
   )
 
   // 파일 URL/ArrayBuffer 변경 시 PDF 로드
@@ -162,7 +171,7 @@ export function PDFViewer({
     if (pdf && canvasRef.current) {
       renderPage(currentPage)
     }
-  }, [pdf, currentPage, scale, rotation, renderPage])
+  }, [pdf, currentPage, renderPage])
 
   // 키보드 네비게이션
   useEffect(() => {
@@ -298,7 +307,7 @@ export function PDFViewer({
   return (
     <div className={cn('flex flex-col h-full bg-zinc-950', className)}>
       {/* 툴바 */}
-      <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-zinc-900">
+      <div className="h-[65px] flex items-center justify-center px-4 border-b border-zinc-800 bg-zinc-900">
         <div className="flex items-center gap-2">
           {/* 페이지 네비게이션 */}
           <button
@@ -337,10 +346,6 @@ export function PDFViewer({
           </button>
         </div>
 
-        {/* 고정 확대 비율 표시 */}
-        <span className="text-sm text-zinc-400">
-          {Math.round(scale * 100)}%
-        </span>
       </div>
 
       {/* PDF 뷰어 */}

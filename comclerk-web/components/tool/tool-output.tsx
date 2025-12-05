@@ -11,9 +11,11 @@ interface ToolOutputProps {
 }
 
 export function ToolOutput({ part }: ToolOutputProps) {
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
   const toolName = part.tool || 'Unknown Tool'
-  const state = part.state || 'pending'
+  const status = part.state?.status || 'pending'
+  const input = part.state?.input
+  const output = part.state?.output
 
   const stateConfig: Record<string, { color: string; bg: string }> = {
     pending: { color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-500/10' },
@@ -22,8 +24,8 @@ export function ToolOutput({ part }: ToolOutputProps) {
     error: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10' },
   }
 
-  const config = stateConfig[state] ?? stateConfig.pending
-  const inputSummary = getInputSummary(toolName, part.input)
+  const config = stateConfig[status] ?? stateConfig.pending
+  const inputSummary = getInputSummary(toolName, input)
 
   return (
     <div className="rounded-lg border overflow-hidden bg-card">
@@ -34,7 +36,7 @@ export function ToolOutput({ part }: ToolOutputProps) {
       >
         <div className="flex items-center gap-2 min-w-0">
           <span className={cn('px-1.5 py-0.5 rounded text-xs font-medium', config.bg, config.color)}>
-            {state === 'running' ? '⏳' : state === 'completed' ? '✓' : state === 'error' ? '✕' : '○'}
+            {status === 'running' ? '⏳' : status === 'completed' ? '✓' : status === 'error' ? '✕' : '○'}
           </span>
           <span className="font-mono text-sm font-medium">{toolName}</span>
           {inputSummary && (
@@ -54,22 +56,35 @@ export function ToolOutput({ part }: ToolOutputProps) {
       {/* Content */}
       {isExpanded && (
         <div className="border-t">
+          {/* Input - always show if exists */}
+          {input && Object.keys(input).length > 0 && (
+            <div className="p-3 bg-muted/30 border-b">
+              <div className="text-xs text-muted-foreground mb-1">Input</div>
+              <div className="text-xs max-h-48 overflow-auto break-words">
+                <MarkdownOutput content={`\`\`\`json\n${JSON.stringify(input, null, 2)}\n\`\`\``} />
+              </div>
+            </div>
+          )}
+
           {/* Output */}
-          {part.output !== undefined && part.output !== null && (
-            <div className="max-h-96 overflow-auto">
-              <MarkdownOutput content={formatOutput(toolName, part.output)} />
+          {output !== undefined && output !== null && (
+            <div className="p-3">
+              <div className="text-xs text-muted-foreground mb-1">Output</div>
+              <div className="text-xs max-h-96 overflow-auto break-words">
+                <MarkdownOutput content={formatOutput(toolName, output)} />
+              </div>
             </div>
           )}
 
           {/* Error */}
-          {part.error && (
-            <div className="p-3 bg-destructive/10 text-destructive text-sm font-mono">
-              {part.error}
+          {status === 'error' && !output && (
+            <div className="p-3 bg-destructive/10 text-destructive text-sm font-mono break-words">
+              Error occurred
             </div>
           )}
 
           {/* No output yet */}
-          {!part.output && !part.error && state === 'running' && (
+          {!output && status !== 'error' && status === 'running' && (
             <div className="p-3 text-sm text-muted-foreground">Running...</div>
           )}
         </div>
@@ -203,12 +218,12 @@ function detectLanguageFromPath(path?: string): string {
 // Markdown renderer with styling
 function MarkdownOutput({ content }: { content: string }) {
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none p-3 prose-pre:bg-zinc-900 prose-pre:text-zinc-100 prose-code:text-sm">
+    <div className="prose prose-sm dark:prose-invert max-w-none text-xs [&_*]:text-xs">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           pre: ({ children }) => (
-            <pre className="bg-zinc-900 text-zinc-100 p-3 rounded-md overflow-x-auto text-sm">
+            <pre className="bg-zinc-900 text-zinc-100 p-2 rounded-md overflow-x-auto text-xs whitespace-pre-wrap break-words">
               {children}
             </pre>
           ),
@@ -216,12 +231,12 @@ function MarkdownOutput({ content }: { content: string }) {
             const isInline = !className
             if (isInline) {
               return (
-                <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props}>
+                <code className="bg-muted px-1 py-0.5 rounded text-xs break-words" {...props}>
                   {children}
                 </code>
               )
             }
-            return <code className={className} {...props}>{children}</code>
+            return <code className={cn(className, 'text-xs break-words')} {...props}>{children}</code>
           },
         }}
       >

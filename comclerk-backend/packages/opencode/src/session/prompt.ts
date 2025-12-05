@@ -219,7 +219,7 @@ export namespace SessionPrompt {
   }
 
   export function cancel(sessionID: string) {
-    log.info("cancel", { sessionID })
+    log.debug("cancel", { sessionID })
     const s = state()
     const match = s[sessionID]
     if (!match) return
@@ -246,7 +246,6 @@ export namespace SessionPrompt {
     let step = 0
     while (true) {
       SessionStatus.set(sessionID, { type: "busy" })
-      log.info("loop", { step, sessionID })
       if (abort.aborted) break
       let msgs = await MessageV2.filterCompacted(MessageV2.stream(sessionID))
 
@@ -273,7 +272,6 @@ export namespace SessionPrompt {
         !["tool-calls", "unknown"].includes(lastAssistant.finish) &&
         lastUser.id < lastAssistant.id
       ) {
-        log.info("exiting loop", { sessionID })
         break
       }
 
@@ -513,17 +511,27 @@ export namespace SessionPrompt {
         })
       }
 
+      const modelMessages = MessageV2.toModelMessage(
+        msgs.filter((m) => {
+          if (m.info.role !== "assistant" || m.info.error === undefined) {
+            return true
+          }
+          if (
+            MessageV2.AbortedError.isInstance(m.info.error) &&
+            m.parts.some((part) => part.type !== "step-start" && part.type !== "reasoning")
+          ) {
+            return true
+          }
+          return false
+        }),
+      )
+
       const result = await processor.process(() =>
         streamText({
-          onError(error) {
-            log.error("stream error", {
-              error,
-            })
-          },
           async experimental_repairToolCall(input) {
             const lower = input.toolCall.toolName.toLowerCase()
             if (lower !== input.toolCall.toolName && tools[lower]) {
-              log.info("repairing tool call", {
+              log.debug("repairing tool call", {
                 tool: input.toolCall.toolName,
                 repaired: lower,
               })
@@ -571,21 +579,7 @@ export namespace SessionPrompt {
                 content: x,
               }),
             ),
-            ...MessageV2.toModelMessage(
-              msgs.filter((m) => {
-                if (m.info.role !== "assistant" || m.info.error === undefined) {
-                  return true
-                }
-                if (
-                  MessageV2.AbortedError.isInstance(m.info.error) &&
-                  m.parts.some((part) => part.type !== "step-start" && part.type !== "reasoning")
-                ) {
-                  return true
-                }
-
-                return false
-              }),
-            ),
+            ...modelMessages,
           ],
           tools: model.info.tool_call === false ? undefined : tools,
           model: wrapLanguageModel({
@@ -620,7 +614,6 @@ export namespace SessionPrompt {
         }),
       )
       if (result === "stop") break
-      continue
     }
     SessionCompaction.prune({ sessionID })
     for await (const item of MessageV2.stream(sessionID)) {
@@ -796,10 +789,12 @@ export namespace SessionPrompt {
           // Add support for other types if needed
         }
 
+        const output = textParts.join("\n\n")
+
         return {
           title: "",
           metadata: result.metadata ?? {},
-          output: textParts.join("\n\n"),
+          output,
           attachments,
           content: result.content, // directly return content to preserve ordering when outputting to model
         }
@@ -864,7 +859,7 @@ export namespace SessionPrompt {
               }
               break
             case "file:":
-              log.info("file", { mime: part.mime })
+              log.debug("file", { mime: part.mime })
               // have to normalize, symbol search returns absolute paths
               // Decode the pathname since URL constructor doesn't automatically decode it
               const filepath = fileURLToPath(part.url)

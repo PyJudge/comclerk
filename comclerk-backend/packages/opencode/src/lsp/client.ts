@@ -147,7 +147,7 @@ export namespace LSPClient {
           if (version !== undefined) {
             const next = version + 1
             files[input.path] = next
-            log.info("textDocument/didChange", {
+            log.debug("textDocument/didChange", {
               path: input.path,
               version: next,
             })
@@ -161,7 +161,7 @@ export namespace LSPClient {
             return
           }
 
-          log.info("textDocument/didOpen", input)
+          log.debug("textDocument/didOpen", input)
           diagnostics.delete(input.path)
           await connection.sendNotification("textDocument/didOpen", {
             textDocument: {
@@ -180,13 +180,13 @@ export namespace LSPClient {
       },
       async waitForDiagnostics(input: { path: string }) {
         input.path = path.isAbsolute(input.path) ? input.path : path.resolve(Instance.directory, input.path)
-        log.info("waiting for diagnostics", input)
+        log.debug("waiting for diagnostics", input)
         let unsub: () => void
         return await withTimeout(
           new Promise<void>((resolve) => {
             unsub = Bus.subscribe(Event.Diagnostics, (event) => {
               if (event.properties.path === input.path && event.properties.serverID === result.serverID) {
-                log.info("got diagnostics", input)
+                log.debug("got diagnostics", input)
                 unsub?.()
                 resolve()
               }

@@ -8,8 +8,8 @@ import { Toaster } from 'sonner'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'OpenCode',
-  description: 'AI-powered code assistant',
+  title: '컴연권',
+  description: '법률 문서 분석 AI 어시스턴트',
 }
 
 export default function RootLayout({

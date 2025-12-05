@@ -12,6 +12,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.62.3",
     "clsx": "^2.1.1",
+    "gray-matter": "^4.0.3",
     "lucide-react": "^0.555.0",
     "next": "14.2.18",
     "pdfjs-dist": "3.11.174",
@@ -20,25 +21,24 @@
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
     "sonner": "^2.0.7",
+    "streamdown": "^1.6.9",
     "tailwind-merge": "^2.5.5",
+    "yaml": "^2.8.2",
     "zod": "^3.23.8",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.2.0",
-    "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.49.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.1",
     "@types/react": "18.3.12",
     "@types/react-dom": "^18.3.1",
-    "eslint": "^9.16.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
     "eslint-config-next": "14.2.18",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.2",
-    "typescript-eslint": "^8.48.0"
+    "typescript": "^5.7.2"
   }
 }

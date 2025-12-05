@@ -1,17 +1,19 @@
 // [COMCLERK-ADDED] 2024-12-01: 워크스페이스 클라이언트 컴포넌트
+// [COMCLERK-MODIFIED] 2025-12-02: 세션 드롭다운 메뉴 추가, 생성 중 스피너 추가
 
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useSessions, useCreateSession, useDeleteAllSessions } from '@/hooks'
-import { Plus } from 'lucide-react'
+import { useSessions, useCreateSession, useDeleteSession, useUpdateSession } from '@/hooks'
+import { Settings, ChevronDown, Trash2, Plus, Loader2, Pencil, Check, X } from 'lucide-react'
+import { useChatStore } from '@/stores/chat-store'
+import Link from 'next/link'
 import { ChatContainer } from '@/components/chat/chat-container'
 import { PDFViewer, FileList } from '@/components/pdf'
 import { usePanelResize } from '@/hooks/use-panel-resize'
 import type { PDFFileMeta, PDFFileData } from '@/types/pdf'
-import { useRef } from 'react'
 
 interface WorkspaceClientProps {
   initialFiles: PDFFileMeta[]
@@ -19,6 +21,8 @@ interface WorkspaceClientProps {
 
 export default function WorkspaceClient({ initialFiles }: WorkspaceClientProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const isGenerating = useChatStore((state) => state.isGenerating)
+
   const { leftPanelWidth, rightPanelWidth, isDragging, handleMouseDown } = usePanelResize(
     containerRef as React.RefObject<HTMLDivElement>
   )
@@ -42,34 +46,118 @@ export default function WorkspaceClient({ initialFiles }: WorkspaceClientProps) 
   // 세션 관리
   const { data: sessions, isLoading: sessionsLoading } = useSessions()
   const createSession = useCreateSession()
-  const deleteAllSessions = useDeleteAllSessions()
+  const deleteSession = useDeleteSession()
+  const updateSession = useUpdateSession()
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [sessionInitAttempted, setSessionInitAttempted] = useState(false)
-  const [isCreatingNewChat, setIsCreatingNewChat] = useState(false)
+  const [sessionDropdownOpen, setSessionDropdownOpen] = useState(false)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editingTitle, setEditingTitle] = useState('')
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
 
-  // 새 채팅 시작 (모든 세션 삭제 후 새 세션 생성)
-  const handleNewChat = useCallback(async () => {
-    if (isCreatingNewChat) return
+  // 현재 세션 정보
+  const currentSession = useMemo(
+    () => sessions?.find((s) => s.id === currentSessionId),
+    [sessions, currentSessionId]
+  )
+  const currentSessionTitle = currentSession?.title || '새 채팅'
 
-    setIsCreatingNewChat(true)
-    try {
-      // 기존 세션들 삭제
-      if (sessions && sessions.length > 0) {
-        const sessionIds = sessions.map((s) => s.id)
-        await deleteAllSessions.mutateAsync(sessionIds)
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setSessionDropdownOpen(false)
       }
-
-      // 새 세션 생성
-      const session = await createSession.mutateAsync('PDF 분석 세션')
-      setCurrentSessionId(session.id)
-      toast.success('새 채팅을 시작합니다')
-    } catch (error) {
-      console.error('Failed to create new chat:', error)
-      toast.error('새 채팅 생성 실패')
-    } finally {
-      setIsCreatingNewChat(false)
     }
-  }, [sessions, deleteAllSessions, createSession, isCreatingNewChat])
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // 새 채팅 생성
+  const handleNewChat = useCallback(async () => {
+    setSessionDropdownOpen(false)
+    try {
+      const session = await createSession.mutateAsync('새 채팅')
+      setCurrentSessionId(session.id)
+    } catch (error) {
+      console.error('Failed to create session:', error)
+      toast.error('채팅 생성에 실패했습니다')
+    }
+  }, [createSession])
+
+  // 세션 선택
+  const handleSelectSession = useCallback((sessionId: string) => {
+    setSessionDropdownOpen(false)
+    setCurrentSessionId(sessionId)
+  }, [])
+
+  // 세션 삭제
+  const handleDeleteSession = useCallback(
+    async (e: React.MouseEvent, sessionId: string) => {
+      e.stopPropagation() // 드롭다운 항목 클릭 방지
+      try {
+        await deleteSession.mutateAsync(sessionId)
+        const remaining = sessions?.filter((s) => s.id !== sessionId)
+
+        // 삭제된 세션이 현재 세션이면 다른 세션 선택
+        if (sessionId === currentSessionId) {
+          if (remaining && remaining.length > 0) {
+            setCurrentSessionId(remaining[0].id)
+          } else {
+            // 세션이 모두 삭제되면 자동으로 새 채팅 생성
+            setSessionDropdownOpen(false)
+            const newSession = await createSession.mutateAsync('새 채팅')
+            setCurrentSessionId(newSession.id)
+            return
+          }
+        }
+      } catch (error) {
+        console.error('Failed to delete session:', error)
+        toast.error('채팅 삭제에 실패했습니다')
+      }
+    },
+    [deleteSession, currentSessionId, sessions, createSession]
+  )
+
+  // 제목 편집 시작
+  const handleStartEditTitle = useCallback(() => {
+    setEditingTitle(currentSessionTitle)
+    setIsEditingTitle(true)
+    // Focus input after state update
+    setTimeout(() => titleInputRef.current?.focus(), 0)
+  }, [currentSessionTitle])
+
+  // 제목 저장
+  const handleSaveTitle = useCallback(async () => {
+    if (!currentSessionId || !editingTitle.trim()) return
+
+    try {
+      await updateSession.mutateAsync({ id: currentSessionId, title: editingTitle.trim() })
+      setIsEditingTitle(false)
+    } catch (error) {
+      console.error('Failed to update session title:', error)
+      toast.error('제목 변경에 실패했습니다')
+    }
+  }, [currentSessionId, editingTitle, updateSession])
+
+  // 제목 편집 취소
+  const handleCancelEditTitle = useCallback(() => {
+    setIsEditingTitle(false)
+    setEditingTitle('')
+  }, [])
+
+  // 제목 입력 키 핸들러
+  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSaveTitle()
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      handleCancelEditTitle()
+    }
+  }, [handleSaveTitle, handleCancelEditTitle])
 
   // 세션 자동 생성/선택 (한 번만 시도)
   useEffect(() => {
@@ -160,8 +248,8 @@ export default function WorkspaceClient({ initialFiles }: WorkspaceClientProps) 
         data-testid="left-panel"
       >
         {/* 헤더 */}
-        <div className="p-4 border-b border-zinc-800 bg-zinc-900">
-          <div className="flex items-center justify-between">
+        <div className="h-[65px] px-4 border-b border-zinc-800 bg-zinc-900 flex items-center">
+          <div className="flex items-center justify-between w-full">
             <h2 className="text-lg font-semibold text-zinc-100">PDF 목록</h2>
             <span className="text-xs text-zinc-500">{pdfFiles.length}개</span>
           </div>
@@ -221,27 +309,149 @@ export default function WorkspaceClient({ initialFiles }: WorkspaceClientProps) 
         data-testid="right-panel"
       >
         {/* 세션 헤더 */}
-        <div className="p-4 border-b border-zinc-800 bg-zinc-900">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-zinc-100">채팅</h2>
-            <button
-              onClick={handleNewChat}
-              disabled={isCreatingNewChat}
-              data-testid="new-chat-button"
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-                'bg-blue-600 text-white hover:bg-blue-500',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-              title="새 채팅 시작 (기존 대화 삭제)"
-            >
-              {isCreatingNewChat ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+        <div className="h-[65px] px-4 border-b border-zinc-800 bg-zinc-900 flex items-center">
+          <div className="flex items-center justify-between w-full">
+            {/* 세션 제목 (편집 가능) */}
+            <div className="relative flex items-center gap-2" ref={dropdownRef}>
+              {isEditingTitle ? (
+                // 편집 모드
+                <div className="flex items-center gap-1">
+                  <input
+                    ref={titleInputRef}
+                    type="text"
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onKeyDown={handleTitleKeyDown}
+                    onBlur={handleSaveTitle}
+                    className="text-lg font-semibold bg-zinc-800 border border-zinc-600 rounded px-2 py-1 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[240px]"
+                    data-testid="session-title-input"
+                  />
+                  <button
+                    onClick={handleSaveTitle}
+                    className="p-1 rounded hover:bg-zinc-700 text-green-400"
+                    title="저장 (Enter)"
+                    data-testid="save-title-button"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleCancelEditTitle}
+                    className="p-1 rounded hover:bg-zinc-700 text-zinc-400"
+                    title="취소 (ESC)"
+                    data-testid="cancel-edit-button"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               ) : (
-                <Plus className="w-4 h-4" />
+                // 표시 모드
+                <>
+                  <button
+                    onClick={() => setSessionDropdownOpen(!sessionDropdownOpen)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors',
+                      'hover:bg-zinc-800 text-zinc-100'
+                    )}
+                    data-testid="session-dropdown-trigger"
+                  >
+                    <span className="text-lg font-semibold truncate max-w-[240px]">
+                      {currentSessionTitle}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        'w-4 h-4 transition-transform',
+                        sessionDropdownOpen && 'rotate-180'
+                      )}
+                    />
+                  </button>
+                  <button
+                    onClick={handleStartEditTitle}
+                    className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                    title="제목 편집"
+                    data-testid="edit-title-button"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                </>
               )}
-              새 채팅
-            </button>
+
+              {/* 드롭다운 메뉴 */}
+              {sessionDropdownOpen && (
+                <div
+                  className="absolute top-full left-0 mt-1 w-64 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg z-50 overflow-hidden"
+                  data-testid="session-dropdown-menu"
+                >
+                  {/* 세션 목록 */}
+                  <div className="max-h-60 overflow-y-auto">
+                    {sessions && sessions.length > 0 ? (
+                      sessions.map((session) => (
+                        <div
+                          key={session.id}
+                          onClick={() => handleSelectSession(session.id)}
+                          className={cn(
+                            'flex items-center justify-between px-3 py-2 cursor-pointer transition-colors',
+                            session.id === currentSessionId
+                              ? 'bg-blue-600/20 text-blue-400'
+                              : 'hover:bg-zinc-700 text-zinc-300'
+                          )}
+                          data-testid={`session-item-${session.id}`}
+                        >
+                          <span className="truncate flex-1 text-sm">
+                            {session.title || '제목 없음'}
+                          </span>
+                          <button
+                            onClick={(e) => handleDeleteSession(e, session.id)}
+                            className="p-1 rounded hover:bg-zinc-600 text-zinc-400 hover:text-red-400 transition-colors ml-2"
+                            title="삭제"
+                            data-testid={`delete-session-${session.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-3 py-4 text-center text-zinc-500 text-sm">
+                        채팅 기록이 없습니다
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 구분선 */}
+                  <div className="border-t border-zinc-700" />
+
+                  {/* 새 채팅 버튼 */}
+                  <button
+                    onClick={handleNewChat}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-blue-400 hover:bg-zinc-700 transition-colors"
+                    data-testid="new-chat-button"
+                  >
+                    <Plus className="w-4 h-4" />
+                    새 채팅
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 생성 중 스피너 + 설정 버튼 */}
+            <div className="flex items-center gap-2">
+              {isGenerating && (
+                <div className="flex items-center gap-1.5 text-blue-400" title="AI 응답 생성 중...">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-xs">생성 중</span>
+                </div>
+              )}
+              <Link
+                href="/settings"
+                data-testid="settings-button"
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                  'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100'
+                )}
+                title="설정"
+              >
+                <Settings className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </div>
 
