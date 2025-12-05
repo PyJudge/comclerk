@@ -72,26 +72,44 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
     }
   }
 
+  // Focus message input helper
+  const focusMessageInput = useCallback(() => {
+    const input = document.querySelector('[data-testid="message-input"]') as HTMLTextAreaElement
+    if (input) {
+      input.focus()
+    }
+  }, [])
+
   // Keyboard shortcuts: 1=Once, 2=Always, 3=Reject
   useEffect(() => {
     if (!currentPermission) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 입력창에 포커스가 있으면 단축키 무시 (숫자 입력 허용)
+      const activeElement = document.activeElement as HTMLElement
+      if (activeElement?.tagName === 'TEXTAREA' || activeElement?.tagName === 'INPUT') {
+        return
+      }
+
       if (e.key === '1') {
         e.preventDefault()
         handlePermissionReply('once')
+        // 응답 후 입력창으로 포커스 이동
+        setTimeout(focusMessageInput, 100)
       } else if (e.key === '2') {
         e.preventDefault()
         handlePermissionReply('always')
+        setTimeout(focusMessageInput, 100)
       } else if (e.key === '3') {
         e.preventDefault()
         handlePermissionReply('reject')
+        setTimeout(focusMessageInput, 100)
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentPermission])
+  }, [currentPermission, focusMessageInput])
 
   // Track generating state based on incomplete assistant messages
   useEffect(() => {
