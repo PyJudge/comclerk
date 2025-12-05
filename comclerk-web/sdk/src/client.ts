@@ -10,7 +10,7 @@ export function createOpencodeClient(config?: Config & { directory?: string }) {
     config = {
       ...config,
       fetch: (req) => {
-        // @ts-expect-error Request type doesn't include timeout property
+        // @ts-ignore
         req.timeout = false
         return fetch(req)
       },

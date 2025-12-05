@@ -264,6 +264,13 @@ export type ToolStateCompleted = {
     end: number
     compacted?: number
   }
+  structuredContent?: Array<
+    | {
+        type: "text"
+        text: string
+      }
+    | FilePart
+  >
   attachments?: Array<FilePart>
 }
 
@@ -2548,6 +2555,35 @@ export type SessionUnrevertResponses = {
 
 export type SessionUnrevertResponse = SessionUnrevertResponses[keyof SessionUnrevertResponses]
 
+export type GetSessionIdPermissionData = {
+  body?: never
+  path: {
+    id: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/session/{id}/permission"
+}
+
+export type GetSessionIdPermissionErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type GetSessionIdPermissionError = GetSessionIdPermissionErrors[keyof GetSessionIdPermissionErrors]
+
+export type GetSessionIdPermissionResponses = {
+  /**
+   * List of pending permissions
+   */
+  200: Array<Permission>
+}
+
+export type GetSessionIdPermissionResponse = GetSessionIdPermissionResponses[keyof GetSessionIdPermissionResponses]
+
 export type PostSessionIdPermissionsPermissionIdData = {
   body?: {
     response: "once" | "always" | "reject"
@@ -2748,6 +2784,38 @@ export type ProviderOauthCallbackResponses = {
 }
 
 export type ProviderOauthCallbackResponse = ProviderOauthCallbackResponses[keyof ProviderOauthCallbackResponses]
+
+export type ProviderLogoutData = {
+  body?: never
+  path: {
+    /**
+     * Provider ID
+     */
+    id: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/provider/{id}/logout"
+}
+
+export type ProviderLogoutErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ProviderLogoutError = ProviderLogoutErrors[keyof ProviderLogoutErrors]
+
+export type ProviderLogoutResponses = {
+  /**
+   * Successfully logged out
+   */
+  200: boolean
+}
+
+export type ProviderLogoutResponse = ProviderLogoutResponses[keyof ProviderLogoutResponses]
 
 export type FindTextData = {
   body?: never

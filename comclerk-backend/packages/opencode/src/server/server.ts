@@ -1,3 +1,5 @@
+// [COMCLERK-MODIFIED] 2025-12-05: Permission polling API 추가 (GET /session/:id/permission)
+// Original: opencode/packages/opencode/src/server/server.ts
 import { Log } from "../util/log"
 import { Bus } from "../bus"
 import { describeRoute, generateSpecs, validator, resolver, openAPIRouteHandler } from "hono-openapi"
@@ -110,7 +112,7 @@ export namespace Server {
       .use(async (c, next) => {
         const skipLogging = c.req.path === "/log"
         if (!skipLogging) {
-          log.info("request", {
+          log.debug("request", {
             method: c.req.method,
             path: c.req.path,
           })
@@ -151,7 +153,7 @@ export namespace Server {
           },
         }),
         async (c) => {
-          log.info("global event connected")
+          log.debug("global event connected")
           return streamSSE(c, async (stream) => {
             async function handler(event: any) {
               await stream.writeSSE({
@@ -163,7 +165,7 @@ export namespace Server {
               stream.onAbort(() => {
                 GlobalBus.off("event", handler)
                 resolve()
-                log.info("global event disconnected")
+                log.debug("global event disconnected")
               })
             })
           })
@@ -1163,6 +1165,36 @@ export namespace Server {
           return c.json(session)
         },
       )
+      .get(
+        "/session/:id/permission",
+        describeRoute({
+          description: "Get pending permissions for a session",
+          responses: {
+            200: {
+              description: "List of pending permissions",
+              content: {
+                "application/json": {
+                  schema: resolver(z.array(Permission.Info)),
+                },
+              },
+            },
+            ...errors(404),
+          },
+        }),
+        validator(
+          "param",
+          z.object({
+            id: z.string(),
+          }),
+        ),
+        async (c) => {
+          const id = c.req.valid("param").id
+          const pending = Permission.pending()
+          const sessionPermissions = pending[id] || {}
+          const permissions = Object.values(sessionPermissions).map((p) => p.info)
+          return c.json(permissions)
+        },
+      )
       .post(
         "/session/:id/permissions/:permissionID",
         describeRoute({
@@ -1379,6 +1411,36 @@ export namespace Server {
             method,
             code,
           })
+          return c.json(true)
+        },
+      )
+      // [COMCLERK-ADDED] 2024-12-02: Provider logout endpoint
+      .delete(
+        "/provider/:id/logout",
+        describeRoute({
+          description: "Logout from a provider (remove stored auth credentials)",
+          operationId: "provider.logout",
+          responses: {
+            200: {
+              description: "Successfully logged out",
+              content: {
+                "application/json": {
+                  schema: resolver(z.boolean()),
+                },
+              },
+            },
+            ...errors(400),
+          },
+        }),
+        validator(
+          "param",
+          z.object({
+            id: z.string().meta({ description: "Provider ID" }),
+          }),
+        ),
+        async (c) => {
+          const id = c.req.valid("param").id
+          await Auth.remove(id)
           return c.json(true)
         },
       )
@@ -2025,7 +2087,7 @@ export namespace Server {
           },
         }),
         async (c) => {
-          log.info("event connected")
+          log.debug("event connected")
           return streamSSE(c, async (stream) => {
             stream.writeSSE({
               data: JSON.stringify({
@@ -2042,7 +2104,7 @@ export namespace Server {
               stream.onAbort(() => {
                 unsub()
                 resolve()
-                log.info("event disconnected")
+                log.debug("event disconnected")
               })
             })
           })

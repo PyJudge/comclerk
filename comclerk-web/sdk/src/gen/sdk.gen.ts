@@ -92,6 +92,9 @@ import type {
   SessionUnrevertData,
   SessionUnrevertResponses,
   SessionUnrevertErrors,
+  GetSessionIdPermissionData,
+  GetSessionIdPermissionResponses,
+  GetSessionIdPermissionErrors,
   PostSessionIdPermissionsPermissionIdData,
   PostSessionIdPermissionsPermissionIdResponses,
   PostSessionIdPermissionsPermissionIdErrors,
@@ -109,6 +112,9 @@ import type {
   ProviderOauthCallbackData,
   ProviderOauthCallbackResponses,
   ProviderOauthCallbackErrors,
+  ProviderLogoutData,
+  ProviderLogoutResponses,
+  ProviderLogoutErrors,
   FindTextData,
   FindTextResponses,
   FindFilesData,
@@ -667,6 +673,16 @@ class Provider extends _HeyApiClient {
       ...options,
     })
   }
+
+  /**
+   * Logout from a provider (remove stored auth credentials)
+   */
+  public logout<ThrowOnError extends boolean = false>(options: Options<ProviderLogoutData, ThrowOnError>) {
+    return (options.client ?? this._client).delete<ProviderLogoutResponses, ProviderLogoutErrors, ThrowOnError>({
+      url: "/provider/{id}/logout",
+      ...options,
+    })
+  }
   oauth = new Oauth({ client: this._client })
 }
 
@@ -984,6 +1000,22 @@ class Event extends _HeyApiClient {
 }
 
 export class OpencodeClient extends _HeyApiClient {
+  /**
+   * Get pending permissions for a session
+   */
+  public getSessionIdPermission<ThrowOnError extends boolean = false>(
+    options: Options<GetSessionIdPermissionData, ThrowOnError>,
+  ) {
+    return (options.client ?? this._client).get<
+      GetSessionIdPermissionResponses,
+      GetSessionIdPermissionErrors,
+      ThrowOnError
+    >({
+      url: "/session/{id}/permission",
+      ...options,
+    })
+  }
+
   /**
    * Respond to a permission request
    */
