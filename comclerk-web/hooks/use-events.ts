@@ -72,8 +72,8 @@ export function useSessionEvents(sessionId: string | null, onEvent?: EventHandle
         }
 
         // Try response itself as async iterable
-        if (!stream && Symbol.asyncIterator in (response as any)) {
-          stream = response as AsyncIterable<Event>
+        if (!stream && Symbol.asyncIterator in (response as object)) {
+          stream = response as unknown as AsyncIterable<Event>
         }
 
         if (stream) {
