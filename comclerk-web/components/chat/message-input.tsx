@@ -260,7 +260,7 @@ export function MessageInput({ sessionId, onMessageSent }: MessageInputProps) {
               'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
               'placeholder:text-zinc-500',
               'disabled:opacity-50 disabled:cursor-not-allowed',
-              'max-h-32 overflow-y-auto'
+              'max-h-32 overflow-y-hidden'
             )}
           />
         </div>

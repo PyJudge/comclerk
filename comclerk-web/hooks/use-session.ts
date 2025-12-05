@@ -80,7 +80,7 @@ export function useMessagePolling(sessionId: string) {
           pollingRef.current = null
         }
       }
-    }, 500)
+    }, 100)
   }, [sessionId, queryClient])
 
   const stopPolling = useCallback(() => {
