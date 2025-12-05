@@ -40,7 +40,7 @@ export function PermissionInline({ permission, onReply, isPending }: PermissionI
   const diff = oldString && newString ? parseDiff(oldString, newString) : null
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 py-4">
+    <div data-testid="permission-inline" className="w-full max-w-3xl mx-auto px-4 py-4">
       <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
         {/* Header */}
         <div className="flex items-center gap-3 mb-3 pb-3 border-b border-zinc-700">
@@ -106,6 +106,7 @@ export function PermissionInline({ permission, onReply, isPending }: PermissionI
         {/* Action buttons */}
         <div className="flex gap-2">
           <button
+            data-testid="permission-btn-once"
             onClick={() => onReply('once')}
             disabled={isPending}
             className={cn(
@@ -119,6 +120,7 @@ export function PermissionInline({ permission, onReply, isPending }: PermissionI
             한 번만
           </button>
           <button
+            data-testid="permission-btn-always"
             onClick={() => onReply('always')}
             disabled={isPending}
             className={cn(
@@ -132,6 +134,7 @@ export function PermissionInline({ permission, onReply, isPending }: PermissionI
             항상
           </button>
           <button
+            data-testid="permission-btn-reject"
             onClick={() => onReply('reject')}
             disabled={isPending}
             className={cn(

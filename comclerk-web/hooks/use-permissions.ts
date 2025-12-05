@@ -13,8 +13,8 @@ export function usePermissionPolling(sessionId: string | null, enabled = true) {
     queryFn: async () => {
       if (!sessionId) return []
 
-      const response = await opencode.GET('/session/{id}/permission', {
-        params: { path: { id: sessionId } },
+      const response = await opencode.getSessionIdPermission({
+        path: { id: sessionId },
       })
 
       if (response.error) {

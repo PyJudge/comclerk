@@ -1,8 +1,10 @@
 // [COMCLERK-MODIFIED] 2025-12-02: 생성 중 상태 추적 추가
 // [COMCLERK-MODIFIED] 2025-12-05: Permission 승인 UI 추가 및 polling 기반으로 변경
+// [COMCLERK-MODIFIED] 2025-12-05: Permission 세션 격리 버그 수정
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSessionMessages, useSessionEvents, useMessagePolling, usePermissionReply, usePermissionPolling } from '@/hooks'
 import { MessageList } from './message-list'
 import { MessageInput } from './message-input'
@@ -18,6 +20,7 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
   const { startPolling } = useMessagePolling(sessionId)
   const setIsGenerating = useChatStore((state) => state.setIsGenerating)
   const replyMutation = usePermissionReply()
+  const queryClient = useQueryClient()
 
   // Poll for pending permissions
   const { data: permissions = [] } = usePermissionPolling(sessionId)
@@ -29,13 +32,18 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
     permissionRef.current = currentPermission
   }, [currentPermission])
 
-  // Handle permission.updated events from SSE (secondary source)
+  // Reset permission ref when session changes (세션 전환 시 초기화)
+  useEffect(() => {
+    permissionRef.current = null
+  }, [sessionId])
+
+  // Handle permission.updated events from SSE - immediately refetch
   const handleEvent = useCallback((event: Event) => {
-    console.log('[ChatContainer] Event received:', event.type, event)
     if (event.type === 'permission.updated') {
-      console.log('[ChatContainer] Permission event (will be picked up by polling):', event.properties)
+      // 즉시 refetch하여 Permission UI 표시 지연 방지
+      queryClient.invalidateQueries({ queryKey: ['permissions', sessionId] })
     }
-  }, [])
+  }, [sessionId, queryClient])
 
   // Subscribe to session events for logging
   useSessionEvents(sessionId, handleEvent)
@@ -44,6 +52,12 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
     const permission = permissionRef.current
     if (!permission) return
 
+    // 현재 세션의 permission인지 확인 (세션 격리)
+    if (permission.sessionID !== sessionId) {
+      console.warn('[ChatContainer] Permission sessionID mismatch, skipping:', permission.sessionID, '!==', sessionId)
+      return
+    }
+
     console.log('[ChatContainer] Replying to permission:', permission.id, response)
     try {
       await replyMutation.mutateAsync({
@@ -51,8 +65,8 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
         permissionId: permission.id,
         response,
       })
-      console.log('[ChatContainer] Permission reply success, clearing permission')
-      setCurrentPermission(null)
+      console.log('[ChatContainer] Permission reply success')
+      // Note: usePermissionReply의 onSuccess에서 invalidateQueries가 자동으로 UI 업데이트 처리
     } catch (error) {
       console.error('Failed to reply to permission:', error)
     }
