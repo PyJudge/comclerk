@@ -10,21 +10,16 @@ interface PermissionInlineProps {
   isPending?: boolean
 }
 
-function parseDiff(oldText: string, newText: string): { added: string[]; removed: string[] } {
-  const oldLines = oldText.split('\n')
-  const newLines = newText.split('\n')
+function parseUnifiedDiff(unifiedDiff: string): { added: string[]; removed: string[] } {
+  const lines = unifiedDiff.split('\n')
   const added: string[] = []
   const removed: string[] = []
 
-  // Simple line-by-line diff
-  const maxLen = Math.max(oldLines.length, newLines.length)
-  for (let i = 0; i < maxLen; i++) {
-    const oldLine = oldLines[i]
-    const newLine = newLines[i]
-
-    if (oldLine !== newLine) {
-      if (oldLine !== undefined) removed.push(oldLine)
-      if (newLine !== undefined) added.push(newLine)
+  for (const line of lines) {
+    if (line.startsWith('+') && !line.startsWith('+++')) {
+      added.push(line.slice(1)) // '+' 제거
+    } else if (line.startsWith('-') && !line.startsWith('---')) {
+      removed.push(line.slice(1)) // '-' 제거
     }
   }
 
@@ -33,11 +28,10 @@ function parseDiff(oldText: string, newText: string): { added: string[]; removed
 
 export function PermissionInline({ permission, onReply, isPending }: PermissionInlineProps) {
   const metadata = permission.metadata || {}
-  const filePath = (metadata.file_path || metadata.path || '') as string
-  const oldString = (metadata.old_string || '') as string
-  const newString = (metadata.new_string || metadata.content || '') as string
+  const filePath = (metadata.file_path || metadata.filePath || metadata.path || '') as string
+  const unifiedDiff = (metadata.diff || '') as string
 
-  const diff = oldString && newString ? parseDiff(oldString, newString) : null
+  const diff = unifiedDiff ? parseUnifiedDiff(unifiedDiff) : null
 
   return (
     <div data-testid="permission-inline" className="w-full max-w-3xl mx-auto px-4 py-4">
@@ -69,8 +63,8 @@ export function PermissionInline({ permission, onReply, isPending }: PermissionI
                 {diff.removed.length > 0 && (
                   <div>
                     {diff.removed.map((line, i) => (
-                      <div key={`removed-${i}`} className="px-3 py-0.5 bg-zinc-800/50 text-zinc-400">
-                        <span className="text-zinc-600 mr-2">-</span>
+                      <div key={`removed-${i}`} className="px-3 py-0.5 bg-red-950/20 text-red-400">
+                        <span className="text-red-600 mr-2">-</span>
                         {line}
                       </div>
                     ))}
@@ -79,26 +73,14 @@ export function PermissionInline({ permission, onReply, isPending }: PermissionI
                 {diff.added.length > 0 && (
                   <div>
                     {diff.added.map((line, i) => (
-                      <div key={`added-${i}`} className="px-3 py-0.5 bg-zinc-800/30 text-zinc-200">
-                        <span className="text-zinc-500 mr-2">+</span>
+                      <div key={`added-${i}`} className="px-3 py-0.5 bg-green-950/20 text-green-400">
+                        <span className="text-green-600 mr-2">+</span>
                         {line}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Content preview for write operations */}
-        {!diff && newString && (
-          <div className="mb-3">
-            <div className="text-xs text-zinc-500 mb-1.5">내용</div>
-            <div className="bg-zinc-900/50 rounded border border-zinc-700 overflow-hidden">
-              <pre className="max-h-64 overflow-y-auto font-mono text-xs px-3 py-2 text-zinc-300">
-                {newString.length > 500 ? `${newString.slice(0, 500)}...` : newString}
-              </pre>
             </div>
           </div>
         )}
